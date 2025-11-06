@@ -1,0 +1,11 @@
+@echo off
+echo ====================================
+echo 籃球運動員分析網站
+echo ====================================
+echo.
+echo 正在啟動 Flask 應用程式...
+echo.
+
+python app.py
+
+pause

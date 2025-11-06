@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ player.name }} - 球員詳細分析</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .gradient-bg { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+        .card-hover {
+            transition: all 0.3s ease;
+        }
+        .card-hover:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.3);
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white">
+    <!-- 導航欄 -->
+    <nav class="gradient-bg shadow-lg sticky top-0 z-50">
+        <div class="container mx-auto px-6 py-4">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-4">
+                    <a href="/player_analysis" class="flex items-center space-x-2 hover:text-yellow-300 transition">
+                        <i class="fas fa-arrow-left"></i>
+                        <span>返回球員列表</span>
+                    </a>
+                </div>
+                <h1 class="text-2xl font-bold">球員詳細分析</h1>
+                <a href="/" class="hover:text-yellow-300 transition">
+                    <i class="fas fa-home text-xl"></i>
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- 球員資訊卡片 -->
+    <section class="container mx-auto px-6 py-8">
+        <div class="bg-gradient-to-r from-purple-600 to-pink-600 rounded-2xl shadow-2xl overflow-hidden">
+            <div class="p-8">
+                <div class="flex flex-col md:flex-row items-center md:items-start gap-6">
+                    <img src="{{ player.avatar }}" alt="{{ player.name }}" class="w-32 h-32 rounded-full border-4 border-white shadow-xl">
+                    <div class="flex-1 text-center md:text-left">
+                        <h1 class="text-4xl font-bold mb-2">{{ player.name }}</h1>
+                        <p class="text-xl opacity-90 mb-1">{{ player.position }} · #{{ player.number }}</p>
+                        <p class="text-lg opacity-75">{{ player.team }}</p>
+                        <div class="flex gap-4 mt-4 justify-center md:justify-start">
+                            <button class="bg-white text-purple-600 px-4 py-2 rounded-lg font-bold hover:bg-gray-100 transition">
+                                <i class="fas fa-star mr-2"></i>加入關注
+                            </button>
+                            <button class="bg-purple-700 px-4 py-2 rounded-lg font-bold hover:bg-purple-800 transition">
+                                <i class="fas fa-share-alt mr-2"></i>分享
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 關鍵數據 -->
+    <section class="container mx-auto px-6 py-8">
+        <h2 class="text-3xl font-bold mb-6">關鍵數據</h2>
+        <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
+            <div class="bg-gray-800 rounded-xl p-6 text-center card-hover">
+                <i class="fas fa-basketball-ball text-yellow-400 text-3xl mb-3"></i>
+                <p class="text-3xl font-bold text-yellow-400">{{ player.ppg }}</p>
+                <p class="text-sm text-gray-400 mt-2">場均得分</p>
+            </div>
+            <div class="bg-gray-800 rounded-xl p-6 text-center card-hover">
+                <i class="fas fa-hands-helping text-blue-400 text-3xl mb-3"></i>
+                <p class="text-3xl font-bold text-blue-400">{{ player.apg }}</p>
+                <p class="text-sm text-gray-400 mt-2">場均助攻</p>
+            </div>
+            <div class="bg-gray-800 rounded-xl p-6 text-center card-hover">
+                <i class="fas fa-shield-alt text-green-400 text-3xl mb-3"></i>
+                <p class="text-3xl font-bold text-green-400">{{ player.rpg }}</p>
+                <p class="text-sm text-gray-400 mt-2">場均籃板</p>
+            </div>
+            <div class="bg-gray-800 rounded-xl p-6 text-center card-hover">
+                <i class="fas fa-bullseye text-purple-400 text-3xl mb-3"></i>
+                <p class="text-3xl font-bold text-purple-400">{{ player.fg_pct }}%</p>
+                <p class="text-sm text-gray-400 mt-2">投籃命中率</p>
+            </div>
+            <div class="bg-gray-800 rounded-xl p-6 text-center card-hover">
+                <i class="fas fa-fire text-red-400 text-3xl mb-3"></i>
+                <p class="text-3xl font-bold text-red-400">{{ player.three_pct }}%</p>
+                <p class="text-sm text-gray-400 mt-2">三分命中率</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- 數據圖表 -->
+    <section class="container mx-auto px-6 py-8">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- 最近10場得分 -->
+            <div class="bg-gray-800 rounded-xl p-6 shadow-xl">
+                <h3 class="text-xl font-bold mb-4">最近10場得分表現</h3>
+                <canvas id="recentGamesChart"></canvas>
+            </div>
+
+            <!-- 數據分布 -->
+            <div class="bg-gray-800 rounded-xl p-6 shadow-xl">
+                <h3 class="text-xl font-bold mb-4">數據分布</h3>
+                <canvas id="statsRadarChart"></canvas>
+            </div>
+
+            <!-- 投籃熱區 -->
+            <div class="bg-gray-800 rounded-xl p-6 shadow-xl">
+                <h3 class="text-xl font-bold mb-4">投籃效率</h3>
+                <div class="space-y-4">
+                    <div>
+                        <div class="flex justify-between mb-2">
+                            <span>近距離投籃</span>
+                            <span class="font-bold text-green-400">68.2%</span>
+                        </div>
+                        <div class="w-full bg-gray-700 rounded-full h-3">
+                            <div class="bg-gradient-to-r from-green-400 to-emerald-500 h-3 rounded-full" style="width: 68.2%"></div>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="flex justify-between mb-2">
+                            <span>中距離投籃</span>
+                            <span class="font-bold text-yellow-400"><span id="fg-pct-text"></span>%</span>
+                        </div>
+                        <div class="w-full bg-gray-700 rounded-full h-3">
+                            <div id="fg-pct-bar" class="bg-gradient-to-r from-yellow-400 to-orange-500 h-3 rounded-full"></div>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="flex justify-between mb-2">
+                            <span>三分球</span>
+                            <span class="font-bold text-blue-400"><span id="three-pct-text"></span>%</span>
+                        </div>
+                        <div class="w-full bg-gray-700 rounded-full h-3">
+                            <div id="three-pct-bar" class="bg-gradient-to-r from-blue-400 to-cyan-500 h-3 rounded-full"></div>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="flex justify-between mb-2">
+                            <span>罰球</span>
+                            <span class="font-bold text-purple-400">85.7%</span>
+                        </div>
+                        <div class="w-full bg-gray-700 rounded-full h-3">
+                            <div class="bg-gradient-to-r from-purple-400 to-pink-500 h-3 rounded-full" style="width: 85.7%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 對位數據 -->
+            <div class="bg-gray-800 rounded-xl p-6 shadow-xl">
+                <h3 class="text-xl font-bold mb-4">本季高光時刻</h3>
+                <div class="space-y-3">
+                    <div class="bg-gray-700 p-4 rounded-lg">
+                        <div class="flex justify-between items-center">
+                            <div>
+                                <p class="font-bold">生涯新高</p>
+                                <p class="text-sm text-gray-400">vs 金州勇士</p>
+                            </div>
+                            <p class="text-3xl font-bold text-yellow-400">51分</p>
+                        </div>
+                    </div>
+                    <div class="bg-gray-700 p-4 rounded-lg">
+                        <div class="flex justify-between items-center">
+                            <div>
+                                <p class="font-bold">大三元</p>
+                                <p class="text-sm text-gray-400">vs 洛杉磯湖人</p>
+                            </div>
+                            <p class="text-sm font-bold text-green-400">28/12/11</p>
+                        </div>
+                    </div>
+                    <div class="bg-gray-700 p-4 rounded-lg">
+                        <div class="flex justify-between items-center">
+                            <div>
+                                <p class="font-bold">連續得分</p>
+                                <p class="text-sm text-gray-400">最近5場</p>
+                            </div>
+                            <p class="text-xl font-bold text-blue-400">30+ 分</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 數據傳遞 -->
+    <script id="player-data" type="application/json">
+        {
+            "recent_games": {{ recent_games | tojson }},
+            "radar_stats": {{ radar_stats | tojson }},
+            "player_name": {{ player.name | tojson }},
+            "fg_pct": {{ player.fg_pct | tojson }},
+            "three_pct": {{ player.three_pct | tojson }}
+        }
+    </script>
+
+    <script>
+        // 讀取數據
+        const playerData = JSON.parse(document.getElementById('player-data').textContent);
+
+        // 設置投籃效率進度條
+        document.getElementById('fg-pct-text').textContent = playerData.fg_pct;
+        document.getElementById('fg-pct-bar').style.width = playerData.fg_pct + '%';
+        document.getElementById('three-pct-text').textContent = playerData.three_pct;
+        document.getElementById('three-pct-bar').style.width = playerData.three_pct + '%';
+
+        // 最近10場得分圖表
+        const recentCtx = document.getElementById('recentGamesChart').getContext('2d');
+        new Chart(recentCtx, {
+            type: 'bar',
+            data: {
+                labels: ['場1', '場2', '場3', '場4', '場5', '場6', '場7', '場8', '場9', '場10'],
+                datasets: [{
+                    label: '得分',
+                    data: playerData.recent_games,
+                    backgroundColor: 'rgba(251, 191, 36, 0.8)',
+                    borderColor: 'rgb(251, 191, 36)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: { labels: { color: 'white' } }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: { color: 'white' },
+                        grid: { color: 'rgba(255, 255, 255, 0.1)' }
+                    },
+                    x: {
+                        ticks: { color: 'white' },
+                        grid: { color: 'rgba(255, 255, 255, 0.1)' }
+                    }
+                }
+            }
+        });
+
+        // 雷達圖
+        const radarCtx = document.getElementById('statsRadarChart').getContext('2d');
+        new Chart(radarCtx, {
+            type: 'radar',
+            data: {
+                labels: ['得分', '助攻', '籃板', '抄截', '阻攻'],
+                datasets: [{
+                    label: playerData.player_name,
+                    data: playerData.radar_stats,
+                    borderColor: 'rgb(168, 85, 247)',
+                    backgroundColor: 'rgba(168, 85, 247, 0.2)',
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: { labels: { color: 'white' } }
+                },
+                scales: {
+                    r: {
+                        beginAtZero: true,
+                        max: 100,
+                        ticks: { color: 'white', backdropColor: 'transparent' },
+                        grid: { color: 'rgba(255, 255, 255, 0.1)' },
+                        pointLabels: { color: 'white' }
+                    }
+                }
+            }
+        });
+    </script>
+</body>
+</html>

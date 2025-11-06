@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>運動數據分析 - 個人健康追蹤系統</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .gradient-bg { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+        .card-hover {
+            transition: all 0.3s ease;
+        }
+        .card-hover:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.3);
+        }
+        @keyframes countUp {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .stat-card {
+            animation: countUp 0.6s ease-out forwards;
+        }
+        .input-field {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: all 0.3s ease;
+        }
+        .input-field:focus {
+            background: rgba(255, 255, 255, 0.15);
+            border-color: #667eea;
+            outline: none;
+        }
+        /* 修正下拉選單選項的顏色 */
+        .input-field option {
+            background-color: #1f2937;
+            color: #ffffff;
+        }
+        .input-field option:hover {
+            background-color: #374151;
+        }
+        #analysisResults {
+            display: none;
+        }
+        #analysisResults.show {
+            display: block;
+            animation: countUp 0.6s ease-out forwards;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white">
+    <!-- 導航欄 -->
+    <nav class="gradient-bg shadow-lg sticky top-0 z-50">
+        <div class="container mx-auto px-6 py-4">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-4">
+                    <a href="/" class="flex items-center space-x-2 hover:text-yellow-300 transition">
+                        <i class="fas fa-arrow-left"></i>
+                        <span>返回首頁</span>
+                    </a>
+                </div>
+                <h1 class="text-2xl font-bold">
+                    <i class="fas fa-heartbeat mr-2"></i>運動數據分析
+                </h1>
+                <div class="w-24"></div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- 數據輸入表單 -->
+    <section class="container mx-auto px-6 py-8">
+        <div class="bg-gray-800 rounded-2xl shadow-2xl p-8 mb-8">
+            <h2 class="text-3xl font-bold mb-6 flex items-center">
+                <i class="fas fa-edit text-yellow-400 mr-3"></i>
+                輸入運動數據
+            </h2>
+
+            <form id="exerciseForm" class="space-y-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+                    <!-- 運動類型 -->
+                    <div>
+                        <label class="block text-sm font-semibold mb-2">
+                            <i class="fas fa-running mr-2 text-blue-400"></i>運動類型
+                        </label>
+                        <select id="exerciseType" name="exerciseType" required class="w-full px-4 py-3 rounded-lg input-field text-white">
+                            <option value="">請選擇運動類型</option>
+                            <option value="running">跑步</option>
+                            <option value="cycling">騎自行車</option>
+                            <option value="swimming">游泳</option>
+                            <option value="basketball">籃球</option>
+                            <option value="soccer">足球</option>
+                            <option value="tennis">網球</option>
+                            <option value="hiking">登山健行</option>
+                            <option value="yoga">瑜伽</option>
+                            <option value="weightlifting">重量訓練</option>
+                            <option value="dancing">跳舞</option>
+                        </select>
+                    </div>
+
+                    <!-- 運動時長 -->
+                    <div>
+                        <label class="block text-sm font-semibold mb-2">
+                            <i class="fas fa-clock mr-2 text-green-400"></i>運動時長（分鐘）
+                        </label>
+                        <input type="number" id="duration" name="duration" required min="1" max="300"
+                               placeholder="例如：30"
+                               class="w-full px-4 py-3 rounded-lg input-field text-white">
+                    </div>
+
+                    <!-- 平均心率 -->
+                    <div>
+                        <label class="block text-sm font-semibold mb-2">
+                            <i class="fas fa-heartbeat mr-2 text-red-400"></i>平均心率（bpm）
+                        </label>
+                        <input type="number" id="heartRate" name="heartRate" required min="40" max="220"
+                               placeholder="例如：120"
+                               class="w-full px-4 py-3 rounded-lg input-field text-white">
+                    </div>
+
+                    <!-- 體溫 -->
+                    <div>
+                        <label class="block text-sm font-semibold mb-2">
+                            <i class="fas fa-thermometer-half mr-2 text-orange-400"></i>運動後體溫（°C）
+                        </label>
+                        <input type="number" id="temperature" name="temperature" required min="35" max="42" step="0.1"
+                               placeholder="例如：37.5"
+                               class="w-full px-4 py-3 rounded-lg input-field text-white">
+                    </div>
+
+                    <!-- 體重 -->
+                    <div>
+                        <label class="block text-sm font-semibold mb-2">
+                            <i class="fas fa-weight mr-2 text-purple-400"></i>體重（公斤）
+                        </label>
+                        <input type="number" id="weight" name="weight" required min="30" max="200" step="0.1"
+                               placeholder="例如：70"
+                               class="w-full px-4 py-3 rounded-lg input-field text-white">
+                    </div>
+
+                    <!-- 運動強度 -->
+                    <div>
+                        <label class="block text-sm font-semibold mb-2">
+                            <i class="fas fa-fire mr-2 text-yellow-400"></i>運動強度
+                        </label>
+                        <select id="intensity" name="intensity" required class="w-full px-4 py-3 rounded-lg input-field text-white">
+                            <option value="">請選擇強度</option>
+                            <option value="low">低強度（輕鬆）</option>
+                            <option value="medium">中強度（適中）</option>
+                            <option value="high">高強度（困難）</option>
+                            <option value="extreme">極高強度（極限）</option>
+                        </select>
+                    </div>
+
+                </div>
+
+                <!-- 提交按鈕 -->
+                <div class="flex justify-center mt-8">
+                    <button type="submit"
+                            class="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700
+                                   px-8 py-4 rounded-lg font-bold text-lg shadow-xl transform hover:scale-105 transition-all">
+                        <i class="fas fa-chart-line mr-2"></i>
+                        開始分析
+                    </button>
+                </div>
+            </form>
+        </div>
+    </section>
+
+    <!-- 分析結果區域 -->
+    <section id="analysisResults" class="container mx-auto px-6 pb-8">
+        <h2 class="text-3xl font-bold mb-6 flex items-center">
+            <i class="fas fa-chart-bar text-green-400 mr-3"></i>
+            分析結果
+        </h2>
+
+        <!-- 關鍵指標卡片 -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+
+            <div class="stat-card card-hover bg-gradient-to-br from-yellow-500 to-orange-600 rounded-xl p-6 shadow-xl">
+                <div class="flex items-center justify-between mb-4">
+                    <i class="fas fa-fire text-4xl opacity-50"></i>
+                    <span class="bg-white bg-opacity-20 px-3 py-1 rounded-full text-xs">卡路里</span>
+                </div>
+                <h3 class="text-sm font-semibold opacity-90 mb-2">消耗熱量</h3>
+                <p id="caloriesBurned" class="text-5xl font-bold mb-2">0</p>
+                <div class="flex items-center text-sm">
+                    <i class="fas fa-cookie-bite mr-1"></i>
+                    <span id="caloriesEquiv">相當於 0 碗飯</span>
+                </div>
+            </div>
+
+            <div class="stat-card card-hover bg-gradient-to-br from-red-500 to-pink-600 rounded-xl p-6 shadow-xl" style="animation-delay: 0.1s;">
+                <div class="flex items-center justify-between mb-4">
+                    <i class="fas fa-heartbeat text-4xl opacity-50"></i>
+                    <span class="bg-white bg-opacity-20 px-3 py-1 rounded-full text-xs">心血管</span>
+                </div>
+                <h3 class="text-sm font-semibold opacity-90 mb-2">心率狀態</h3>
+                <p id="heartRateZone" class="text-3xl font-bold mb-2">-</p>
+                <div class="flex items-center text-sm">
+                    <i class="fas fa-tachometer-alt mr-1"></i>
+                    <span id="heartRatePercent">-</span>
+                </div>
+            </div>
+
+            <div class="stat-card card-hover bg-gradient-to-br from-blue-500 to-cyan-600 rounded-xl p-6 shadow-xl" style="animation-delay: 0.2s;">
+                <div class="flex items-center justify-between mb-4">
+                    <i class="fas fa-running text-4xl opacity-50"></i>
+                    <span class="bg-white bg-opacity-20 px-3 py-1 rounded-full text-xs">強度</span>
+                </div>
+                <h3 class="text-sm font-semibold opacity-90 mb-2">運動強度</h3>
+                <p id="intensityLevel" class="text-3xl font-bold mb-2">-</p>
+                <div class="flex items-center text-sm">
+                    <i class="fas fa-bolt mr-1"></i>
+                    <span id="intensityDesc">-</span>
+                </div>
+            </div>
+
+            <div class="stat-card card-hover bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl p-6 shadow-xl" style="animation-delay: 0.3s;">
+                <div class="flex items-center justify-between mb-4">
+                    <i class="fas fa-trophy text-4xl opacity-50"></i>
+                    <span class="bg-white bg-opacity-20 px-3 py-1 rounded-full text-xs">效能</span>
+                </div>
+                <h3 class="text-sm font-semibold opacity-90 mb-2">運動效率</h3>
+                <p id="efficiency" class="text-5xl font-bold mb-2">-</p>
+                <div class="flex items-center text-sm">
+                    <i class="fas fa-star mr-1"></i>
+                    <span id="efficiencyDesc">-</span>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- 詳細分析區域 -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+            <!-- 健康指標 -->
+            <div class="card-hover bg-gray-800 rounded-xl p-6 shadow-xl">
+                <h3 class="text-xl font-bold mb-4 flex items-center">
+                    <i class="fas fa-heart text-red-400 mr-2"></i>
+                    健康指標分析
+                </h3>
+                <div class="space-y-3">
+                    <div class="flex justify-between items-center p-3 bg-gray-700 rounded-lg">
+                        <span class="flex items-center">
+                            <i class="fas fa-thermometer-half text-orange-400 mr-2"></i>
+                            體溫狀態
+                        </span>
+                        <span id="tempStatus" class="font-bold">-</span>
+                    </div>
+                    <div class="flex justify-between items-center p-3 bg-gray-700 rounded-lg">
+                        <span class="flex items-center">
+                            <i class="fas fa-heartbeat text-red-400 mr-2"></i>
+                            心率區間
+                        </span>
+                        <span id="hrZoneDetail" class="font-bold">-</span>
+                    </div>
+                    <div class="flex justify-between items-center p-3 bg-gray-700 rounded-lg">
+                        <span class="flex items-center">
+                            <i class="fas fa-dumbbell text-purple-400 mr-2"></i>
+                            運動類型
+                        </span>
+                        <span id="exerciseTypeDisplay" class="font-bold">-</span>
+                    </div>
+                    <div class="flex justify-between items-center p-3 bg-gray-700 rounded-lg">
+                        <span class="flex items-center">
+                            <i class="fas fa-clock text-blue-400 mr-2"></i>
+                            運動時長
+                        </span>
+                        <span id="durationDisplay" class="font-bold">-</span>
+                    </div>
+                    <div class="flex justify-between items-center p-3 bg-gray-700 rounded-lg">
+                        <span class="flex items-center">
+                            <i class="fas fa-weight text-green-400 mr-2"></i>
+                            體重
+                        </span>
+                        <span id="weightDisplay" class="font-bold">-</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 建議與改善 -->
+            <div class="card-hover bg-gray-800 rounded-xl p-6 shadow-xl">
+                <h3 class="text-xl font-bold mb-4 flex items-center">
+                    <i class="fas fa-lightbulb text-yellow-400 mr-2"></i>
+                    運動建議
+                </h3>
+                <div id="recommendations" class="space-y-3">
+                    <!-- 建議將由 JavaScript 動態生成 -->
+                </div>
+            </div>
+
+        </div>
+    </section>
+
+    <script>
+        // MET 值對照表（代謝當量）
+        const MET_VALUES = {
+            'running': 9.0,
+            'cycling': 7.5,
+            'swimming': 8.0,
+            'basketball': 8.0,
+            'soccer': 10.0,
+            'tennis': 7.0,
+            'hiking': 6.0,
+            'yoga': 3.0,
+            'weightlifting': 6.0,
+            'dancing': 5.0
+        };
+
+        // 運動類型中文對照
+        const EXERCISE_NAMES = {
+            'running': '跑步',
+            'cycling': '騎自行車',
+            'swimming': '游泳',
+            'basketball': '籃球',
+            'soccer': '足球',
+            'tennis': '網球',
+            'hiking': '登山健行',
+            'yoga': '瑜伽',
+            'weightlifting': '重量訓練',
+            'dancing': '跳舞'
+        };
+
+        // 表單提交處理
+        document.getElementById('exerciseForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            // 獲取表單數據
+            const formData = {
+                exerciseType: document.getElementById('exerciseType').value,
+                duration: parseFloat(document.getElementById('duration').value),
+                heartRate: parseFloat(document.getElementById('heartRate').value),
+                temperature: parseFloat(document.getElementById('temperature').value),
+                weight: parseFloat(document.getElementById('weight').value),
+                intensity: document.getElementById('intensity').value
+            };
+
+            // 執行分析
+            analyzeExerciseData(formData);
+        });
+
+        function analyzeExerciseData(data) {
+            // 1. 計算卡路里消耗
+            // 公式: 卡路里 = MET × 體重(kg) × 時間(小時) × 強度係數
+            let baseMET = MET_VALUES[data.exerciseType];
+            const intensityMultiplier = {
+                'low': 0.8,
+                'medium': 1.0,
+                'high': 1.3,
+                'extreme': 1.6
+            };
+
+            const adjustedMET = baseMET * intensityMultiplier[data.intensity];
+            const timeInHours = data.duration / 60;
+            const caloriesBurned = Math.round(adjustedMET * data.weight * timeInHours);
+
+            // 2. 計算心率區間
+            const maxHeartRate = 220 - 25; // 假設25歲
+            const hrPercent = Math.round((data.heartRate / maxHeartRate) * 100);
+            let hrZone, hrZoneColor;
+
+            if (hrPercent < 60) {
+                hrZone = '輕鬆區';
+                hrZoneColor = 'text-blue-400';
+            } else if (hrPercent < 70) {
+                hrZone = '燃脂區';
+                hrZoneColor = 'text-green-400';
+            } else if (hrPercent < 80) {
+                hrZone = '有氧區';
+                hrZoneColor = 'text-yellow-400';
+            } else if (hrPercent < 90) {
+                hrZone = '無氧區';
+                hrZoneColor = 'text-orange-400';
+            } else {
+                hrZone = '極限區';
+                hrZoneColor = 'text-red-400';
+            }
+
+            // 3. 體溫評估
+            let tempStatus, tempColor;
+            if (data.temperature < 36.5) {
+                tempStatus = '偏低';
+                tempColor = 'text-blue-400';
+            } else if (data.temperature <= 37.5) {
+                tempStatus = '正常';
+                tempColor = 'text-green-400';
+            } else if (data.temperature <= 38.0) {
+                tempStatus = '偏高';
+                tempColor = 'text-orange-400';
+            } else {
+                tempStatus = '過高';
+                tempColor = 'text-red-400';
+            }
+
+            // 4. 運動效率評估
+            // 基於每分鐘卡路里消耗來評分,更合理的標準
+            const caloriesPerMinute = caloriesBurned / data.duration;
+            let efficiencyScore;
+            let efficiencyGrade;
+
+            // 根據每分鐘卡路里消耗計算分數(0-100分)
+            if (caloriesPerMinute >= 15) {
+                efficiencyScore = 100;
+                efficiencyGrade = 'S';  // 超級優秀
+            } else if (caloriesPerMinute >= 12) {
+                efficiencyScore = Math.min(100, Math.round(75 + (caloriesPerMinute - 12) * 8.3));
+                efficiencyGrade = 'A+';
+            } else if (caloriesPerMinute >= 10) {
+                efficiencyScore = Math.min(100, Math.round(60 + (caloriesPerMinute - 10) * 7.5));
+                efficiencyGrade = 'A';
+            } else if (caloriesPerMinute >= 8) {
+                efficiencyScore = Math.min(100, Math.round(50 + (caloriesPerMinute - 8) * 5));
+                efficiencyGrade = 'B';
+            } else if (caloriesPerMinute >= 6) {
+                efficiencyScore = Math.min(100, Math.round(40 + (caloriesPerMinute - 6) * 5));
+                efficiencyGrade = 'C';
+            } else if (caloriesPerMinute >= 4) {
+                efficiencyScore = Math.min(100, Math.round(30 + (caloriesPerMinute - 4) * 5));
+                efficiencyGrade = 'D';
+            } else {
+                efficiencyScore = Math.min(100, Math.round(caloriesPerMinute * 7.5));
+                efficiencyGrade = 'E';
+            }
+
+            // 5. 顯示結果
+            document.getElementById('caloriesBurned').textContent = caloriesBurned + ' 大卡';
+            document.getElementById('caloriesEquiv').textContent = `相當於 ${Math.round(caloriesBurned / 280)} 碗飯`;
+
+            document.getElementById('heartRateZone').innerHTML = `<span class="${hrZoneColor}">${hrZone}</span>`;
+            document.getElementById('heartRatePercent').textContent = `${data.heartRate} bpm (${hrPercent}% 最大心率)`;
+
+            const intensityText = {
+                'low': '低強度',
+                'medium': '中強度',
+                'high': '高強度',
+                'extreme': '極限強度'
+            };
+            document.getElementById('intensityLevel').textContent = intensityText[data.intensity];
+            document.getElementById('intensityDesc').textContent = `MET 值: ${adjustedMET.toFixed(1)}`;
+
+            document.getElementById('efficiency').textContent = efficiencyGrade;
+            document.getElementById('efficiencyDesc').textContent = `每分鐘 ${caloriesPerMinute.toFixed(1)} 大卡 (${efficiencyScore}分)`;
+
+            // 健康指標顯示
+            document.getElementById('tempStatus').innerHTML = `<span class="${tempColor}">${tempStatus} (${data.temperature}°C)</span>`;
+            document.getElementById('hrZoneDetail').innerHTML = `<span class="${hrZoneColor}">${hrZone}</span>`;
+            document.getElementById('exerciseTypeDisplay').textContent = EXERCISE_NAMES[data.exerciseType];
+            document.getElementById('durationDisplay').textContent = data.duration + ' 分鐘';
+            document.getElementById('weightDisplay').textContent = data.weight + ' 公斤';
+
+            // 6. 生成建議
+            generateRecommendations(data, caloriesBurned, hrPercent, tempStatus);
+
+            // 顯示結果區域
+            document.getElementById('analysisResults').classList.add('show');
+
+            // 平滑滾動到結果
+            document.getElementById('analysisResults').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
+        function generateRecommendations(data, calories, hrPercent, tempStatus) {
+            const recommendations = [];
+
+            // 基於卡路里的建議
+            if (calories > 500) {
+                recommendations.push({
+                    icon: 'fa-trophy',
+                    color: 'text-yellow-400',
+                    text: '太棒了！您消耗了大量卡路里，保持這個強度會有很好的減重效果。'
+                });
+            } else if (calories < 200) {
+                recommendations.push({
+                    icon: 'fa-chart-line',
+                    color: 'text-blue-400',
+                    text: '建議增加運動時間或強度，以達到更好的健身效果。'
+                });
+            }
+
+            // 基於心率的建議
+            if (hrPercent > 90) {
+                recommendations.push({
+                    icon: 'fa-exclamation-triangle',
+                    color: 'text-red-400',
+                    text: '心率過高，請注意休息並補充水分。下次可以適度降低運動強度。'
+                });
+            } else if (hrPercent >= 70 && hrPercent <= 80) {
+                recommendations.push({
+                    icon: 'fa-heart',
+                    color: 'text-green-400',
+                    text: '心率在最佳有氧區間，非常適合提升心肺功能！'
+                });
+            }
+
+            // 基於體溫的建議
+            if (tempStatus === '過高') {
+                recommendations.push({
+                    icon: 'fa-thermometer-full',
+                    color: 'text-red-400',
+                    text: '體溫偏高，請立即休息、補充水分並降溫。如持續高溫請就醫。'
+                });
+            } else if (tempStatus === '正常') {
+                recommendations.push({
+                    icon: 'fa-check-circle',
+                    color: 'text-green-400',
+                    text: '體溫正常，身體狀態良好，可以繼續規律運動。'
+                });
+            }
+
+            // 基於運動類型的建議
+            if (data.exerciseType === 'running' && data.duration > 60) {
+                recommendations.push({
+                    icon: 'fa-running',
+                    color: 'text-purple-400',
+                    text: '長時間跑步後記得做伸展運動，並在24小時內補充蛋白質。'
+                });
+            }
+
+            // 通用建議
+            recommendations.push({
+                icon: 'fa-water',
+                color: 'text-cyan-400',
+                text: `運動後建議補充約 ${Math.round(data.duration * 7)} ml 的水分。`
+            });
+
+            // 渲染建議
+            const recContainer = document.getElementById('recommendations');
+            recContainer.innerHTML = recommendations.map(rec => `
+                <div class="flex items-start space-x-3 p-3 bg-gray-700 rounded-lg">
+                    <i class="fas ${rec.icon} ${rec.color} mt-1"></i>
+                    <p class="text-sm">${rec.text}</p>
+                </div>
+            `).join('');
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,38 @@
+# Flask 設置
+*.pyc
+__pycache__/
+instance/
+.pytest_cache/
+.coverage
+htmlcov/
+dist/
+build/
+*.egg-info/
+
+# 虛擬環境
+venv/
+env/
+ENV/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# 日誌
+*.log
+
+# 數據庫
+*.db
+*.sqlite
+*.sqlite3
+
+# 環境變數
+.env
+.flaskenv

@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>賽事比分 - 籃球分析系統</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        .live-pulse { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+        .gradient-bg { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+        .card-hover {
+            transition: all 0.3s ease;
+        }
+        .card-hover:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.3);
+        }
+        @keyframes scoreUpdate {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.2); color: #fbbf24; }
+            100% { transform: scale(1); }
+        }
+        .score-animate {
+            animation: scoreUpdate 0.5s ease;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white">
+    <!-- 導航欄 -->
+    <nav class="gradient-bg shadow-lg sticky top-0 z-50">
+        <div class="container mx-auto px-6 py-4">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-4">
+                    <a href="/" class="flex items-center space-x-2 hover:text-yellow-300 transition">
+                        <i class="fas fa-arrow-left"></i>
+                        <span>返回首頁</span>
+                    </a>
+                </div>
+                <h1 class="text-2xl font-bold">賽事比分</h1>
+                <div class="flex items-center space-x-2">
+                    <span class="bg-red-500 w-3 h-3 rounded-full live-pulse"></span>
+                    <span class="text-sm">即時更新</span>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- 日期選擇器 -->
+    <section class="container mx-auto px-6 py-6">
+        <div class="bg-gray-800 rounded-xl p-4 shadow-xl">
+            <div class="flex items-center justify-between">
+                <button class="bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded-lg transition">
+                    <i class="fas fa-chevron-left"></i>
+                </button>
+                <div class="flex space-x-2 overflow-x-auto">
+                    <button class="px-4 py-2 bg-gray-700 hover:bg-purple-600 rounded-lg transition whitespace-nowrap">11/4</button>
+                    <button class="px-4 py-2 bg-gray-700 hover:bg-purple-600 rounded-lg transition whitespace-nowrap">11/5</button>
+                    <button class="px-4 py-2 bg-purple-600 rounded-lg whitespace-nowrap">11/6 今天</button>
+                    <button class="px-4 py-2 bg-gray-700 hover:bg-purple-600 rounded-lg transition whitespace-nowrap">11/7</button>
+                    <button class="px-4 py-2 bg-gray-700 hover:bg-purple-600 rounded-lg transition whitespace-nowrap">11/8</button>
+                </div>
+                <button class="bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded-lg transition">
+                    <i class="fas fa-chevron-right"></i>
+                </button>
+            </div>
+        </div>
+    </section>
+
+    <!-- 進行中的比賽 -->
+    <section class="container mx-auto px-6 py-6">
+        <div class="flex items-center justify-between mb-4">
+            <h2 class="text-2xl font-bold flex items-center">
+                <span class="bg-red-500 w-3 h-3 rounded-full live-pulse mr-2"></span>
+                進行中
+            </h2>
+            <span class="text-gray-400">3 場比賽</span>
+        </div>
+
+        <div class="space-y-4">
+            <!-- 比賽卡片 1 -->
+            <div class="card-hover bg-gray-800 rounded-xl overflow-hidden shadow-xl">
+                <div class="bg-gradient-to-r from-red-600 to-orange-600 p-3">
+                    <div class="flex items-center justify-between">
+                        <span class="text-sm font-bold">NBA · 例行賽</span>
+                        <div class="flex items-center space-x-2">
+                            <span class="bg-white text-red-600 text-xs px-2 py-1 rounded-full font-bold">LIVE</span>
+                            <span class="text-sm">Q4 2:34</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="p-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <!-- 主隊 -->
+                        <div class="flex-1 text-center">
+                            <div class="flex items-center justify-center space-x-3 mb-2">
+                                <img src="https://via.placeholder.com/50" alt="Lakers" class="w-12 h-12 rounded-full">
+                                <div class="text-left">
+                                    <h3 class="text-xl font-bold">洛杉磯湖人</h3>
+                                    <p class="text-sm text-gray-400">Lakers</p>
+                                </div>
+                            </div>
+                            <p class="text-5xl font-bold text-yellow-400">108</p>
+                        </div>
+
+                        <!-- 中間分隔 -->
+                        <div class="px-4">
+                            <div class="text-center">
+                                <p class="text-2xl font-bold text-gray-500">VS</p>
+                            </div>
+                        </div>
+
+                        <!-- 客隊 -->
+                        <div class="flex-1 text-center">
+                            <div class="flex items-center justify-center space-x-3 mb-2">
+                                <div class="text-right">
+                                    <h3 class="text-xl font-bold">金州勇士</h3>
+                                    <p class="text-sm text-gray-400">Warriors</p>
+                                </div>
+                                <img src="https://via.placeholder.com/50" alt="Warriors" class="w-12 h-12 rounded-full">
+                            </div>
+                            <p class="text-5xl font-bold text-blue-400">105</p>
+                        </div>
+                    </div>
+
+                    <!-- 各節比分 -->
+                    <div class="grid grid-cols-5 gap-2 mt-6 pt-4 border-t border-gray-700">
+                        <div class="text-center text-xs text-gray-400">Q1</div>
+                        <div class="text-center text-xs text-gray-400">Q2</div>
+                        <div class="text-center text-xs text-gray-400">Q3</div>
+                        <div class="text-center text-xs text-gray-400">Q4</div>
+                        <div class="text-center text-xs text-gray-400">總分</div>
+
+                        <div class="text-center font-bold">28</div>
+                        <div class="text-center font-bold">26</div>
+                        <div class="text-center font-bold">27</div>
+                        <div class="text-center font-bold text-yellow-400">27</div>
+                        <div class="text-center font-bold text-yellow-400">108</div>
+
+                        <div class="text-center font-bold">25</div>
+                        <div class="text-center font-bold">28</div>
+                        <div class="text-center font-bold">24</div>
+                        <div class="text-center font-bold text-blue-400">28</div>
+                        <div class="text-center font-bold text-blue-400">105</div>
+                    </div>
+
+                    <!-- 快速統計 -->
+                    <div class="grid grid-cols-3 gap-4 mt-6 pt-4 border-t border-gray-700">
+                        <div class="text-center">
+                            <p class="text-sm text-gray-400">領先次數</p>
+                            <p class="text-xl font-bold text-yellow-400">15</p>
+                        </div>
+                        <div class="text-center">
+                            <p class="text-sm text-gray-400">最大領先</p>
+                            <p class="text-xl font-bold">8</p>
+                        </div>
+                        <div class="text-center">
+                            <p class="text-sm text-gray-400">平手次數</p>
+                            <p class="text-xl font-bold">3</p>
+                        </div>
+                    </div>
+
+                    <button class="mt-6 w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 py-3 rounded-lg font-bold transition">
+                        觀看直播 <i class="fas fa-play-circle ml-2"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- 比賽卡片 2 -->
+            <div class="card-hover bg-gray-800 rounded-xl overflow-hidden shadow-xl">
+                <div class="bg-gradient-to-r from-red-600 to-orange-600 p-3">
+                    <div class="flex items-center justify-between">
+                        <span class="text-sm font-bold">NBA · 例行賽</span>
+                        <div class="flex items-center space-x-2">
+                            <span class="bg-white text-red-600 text-xs px-2 py-1 rounded-full font-bold">LIVE</span>
+                            <span class="text-sm">Q3 8:12</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="p-6">
+                    <div class="flex items-center justify-between">
+                        <div class="flex-1 text-center">
+                            <div class="flex items-center justify-center space-x-3 mb-2">
+                                <img src="https://via.placeholder.com/50" alt="Celtics" class="w-12 h-12 rounded-full">
+                                <div class="text-left">
+                                    <h3 class="text-xl font-bold">波士頓塞爾提克</h3>
+                                    <p class="text-sm text-gray-400">Celtics</p>
+                                </div>
+                            </div>
+                            <p class="text-5xl font-bold text-green-400">95</p>
+                        </div>
+                        <div class="px-4">
+                            <p class="text-2xl font-bold text-gray-500">VS</p>
+                        </div>
+                        <div class="flex-1 text-center">
+                            <div class="flex items-center justify-center space-x-3 mb-2">
+                                <div class="text-right">
+                                    <h3 class="text-xl font-bold">邁阿密熱火</h3>
+                                    <p class="text-sm text-gray-400">Heat</p>
+                                </div>
+                                <img src="https://via.placeholder.com/50" alt="Heat" class="w-12 h-12 rounded-full">
+                            </div>
+                            <p class="text-5xl font-bold text-red-400">89</p>
+                        </div>
+                    </div>
+                    <button class="mt-6 w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 py-3 rounded-lg font-bold transition">
+                        觀看直播 <i class="fas fa-play-circle ml-2"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 即將開始的比賽 -->
+    <section class="container mx-auto px-6 py-6">
+        <div class="flex items-center justify-between mb-4">
+            <h2 class="text-2xl font-bold">即將開始</h2>
+            <span class="text-gray-400">5 場比賽</span>
+        </div>
+
+        <div class="space-y-4">
+            <div class="card-hover bg-gray-800 rounded-xl p-6 shadow-xl">
+                <div class="flex items-center justify-between mb-4">
+                    <span class="text-sm text-gray-400">NBA · 例行賽</span>
+                    <div class="bg-blue-600 px-3 py-1 rounded-full text-sm font-bold">
+                        <i class="fas fa-clock mr-1"></i>19:30 開始
+                    </div>
+                </div>
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center space-x-3">
+                        <img src="https://via.placeholder.com/40" alt="Nets" class="w-10 h-10 rounded-full">
+                        <span class="font-bold">布魯克林籃網</span>
+                    </div>
+                    <span class="text-gray-500 font-bold">VS</span>
+                    <div class="flex items-center space-x-3">
+                        <span class="font-bold">芝加哥公牛</span>
+                        <img src="https://via.placeholder.com/40" alt="Bulls" class="w-10 h-10 rounded-full">
+                    </div>
+                </div>
+            </div>
+
+            <div class="card-hover bg-gray-800 rounded-xl p-6 shadow-xl">
+                <div class="flex items-center justify-between mb-4">
+                    <span class="text-sm text-gray-400">NBA · 例行賽</span>
+                    <div class="bg-blue-600 px-3 py-1 rounded-full text-sm font-bold">
+                        <i class="fas fa-clock mr-1"></i>20:00 開始
+                    </div>
+                </div>
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center space-x-3">
+                        <img src="https://via.placeholder.com/40" alt="Suns" class="w-10 h-10 rounded-full">
+                        <span class="font-bold">鳳凰城太陽</span>
+                    </div>
+                    <span class="text-gray-500 font-bold">VS</span>
+                    <div class="flex items-center space-x-3">
+                        <span class="font-bold">達拉斯獨行俠</span>
+                        <img src="https://via.placeholder.com/40" alt="Mavericks" class="w-10 h-10 rounded-full">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 已結束的比賽 -->
+    <section class="container mx-auto px-6 py-6 pb-12">
+        <div class="flex items-center justify-between mb-4">
+            <h2 class="text-2xl font-bold">已結束</h2>
+            <span class="text-gray-400">6 場比賽</span>
+        </div>
+
+        <div class="space-y-4">
+            <div class="card-hover bg-gray-800 rounded-xl p-6 shadow-xl">
+                <div class="flex items-center justify-between mb-4">
+                    <span class="text-sm text-gray-400">NBA · 例行賽 · 已結束</span>
+                    <span class="text-sm text-gray-500">2小時前</span>
+                </div>
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center space-x-3 flex-1">
+                        <img src="https://via.placeholder.com/40" alt="Clippers" class="w-10 h-10 rounded-full">
+                        <span class="font-bold">洛杉磯快艇</span>
+                    </div>
+                    <div class="flex items-center space-x-4">
+                        <span class="text-2xl font-bold">112</span>
+                        <span class="text-gray-500">-</span>
+                        <span class="text-2xl font-bold text-green-400">118</span>
+                    </div>
+                    <div class="flex items-center space-x-3 flex-1 justify-end">
+                        <span class="font-bold">丹佛金塊</span>
+                        <img src="https://via.placeholder.com/40" alt="Nuggets" class="w-10 h-10 rounded-full">
+                    </div>
+                </div>
+                <button class="mt-4 w-full bg-gray-700 hover:bg-gray-600 py-2 rounded-lg font-bold transition text-sm">
+                    查看賽事詳情
+                </button>
+            </div>
+
+            <div class="card-hover bg-gray-800 rounded-xl p-6 shadow-xl">
+                <div class="flex items-center justify-between mb-4">
+                    <span class="text-sm text-gray-400">NBA · 例行賽 · 已結束</span>
+                    <span class="text-sm text-gray-500">3小時前</span>
+                </div>
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center space-x-3 flex-1">
+                        <img src="https://via.placeholder.com/40" alt="Bucks" class="w-10 h-10 rounded-full">
+                        <span class="font-bold">密爾瓦基公鹿</span>
+                    </div>
+                    <div class="flex items-center space-x-4">
+                        <span class="text-2xl font-bold text-green-400">128</span>
+                        <span class="text-gray-500">-</span>
+                        <span class="text-2xl font-bold">119</span>
+                    </div>
+                    <div class="flex items-center space-x-3 flex-1 justify-end">
+                        <span class="font-bold">費城76人</span>
+                        <img src="https://via.placeholder.com/40" alt="76ers" class="w-10 h-10 rounded-full">
+                    </div>
+                </div>
+                <button class="mt-4 w-full bg-gray-700 hover:bg-gray-600 py-2 rounded-lg font-bold transition text-sm">
+                    查看賽事詳情
+                </button>
+            </div>
+        </div>
+    </section>
+
+    <script>
+        // 模擬即時比分更新
+        setInterval(() => {
+            const scores = document.querySelectorAll('.text-5xl');
+            scores.forEach(score => {
+                if (Math.random() > 0.95) { // 5% 機率更新
+                    score.classList.add('score-animate');
+                    setTimeout(() => score.classList.remove('score-animate'), 500);
+                }
+            });
+        }, 3000);
+    </script>
+</body>
+</html>
