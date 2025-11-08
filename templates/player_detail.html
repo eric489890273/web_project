@@ -24,14 +24,14 @@
         <div class="container mx-auto px-6 py-4">
             <div class="flex items-center justify-between">
                 <div class="flex items-center space-x-4">
-                    <a href="/player_analysis" class="flex items-center space-x-2 hover:text-yellow-300 transition">
+                    <a href="/player_analysis" class="bg-white/10 hover:bg-white/20 px-4 py-2 rounded-lg transition flex items-center space-x-2 backdrop-blur-sm border border-white/20">
                         <i class="fas fa-arrow-left"></i>
                         <span>返回球員列表</span>
                     </a>
                 </div>
                 <h1 class="text-2xl font-bold">球員詳細分析</h1>
-                <a href="/" class="hover:text-yellow-300 transition">
-                    <i class="fas fa-home text-xl"></i>
+                <a href="/" class="bg-white/10 hover:bg-white/20 px-4 py-2 rounded-lg transition backdrop-blur-sm border border-white/20">
+                    <i class="fas fa-home text-lg"></i>
                 </a>
             </div>
         </div>
@@ -48,17 +48,22 @@
                         <p class="text-xl opacity-90 mb-1">{{ player.position }} · #{{ player.number }}</p>
                         <p class="text-lg opacity-75">{{ player.team }}</p>
                         <div class="flex gap-4 mt-4 justify-center md:justify-start">
-                            <button class="bg-white text-purple-600 px-4 py-2 rounded-lg font-bold hover:bg-gray-100 transition">
-                                <i class="fas fa-star mr-2"></i>加入關注
-                            </button>
-                            <button class="bg-purple-700 px-4 py-2 rounded-lg font-bold hover:bg-purple-800 transition">
-                                <i class="fas fa-share-alt mr-2"></i>分享
-                            </button>
+                            <div class="text-center">
+                                <p class="text-2xl font-bold">{{ player.age }}</p>
+                                <p class="text-sm opacity-75">年齡</p>
+                            </div>
+                            <div class="text-center">
+                                <p class="text-2xl font-bold">{{ player.height }}</p>
+                                <p class="text-sm opacity-75">身高</p>
+                            </div>
+                            <div class="text-center">
+                                <p class="text-2xl font-bold">{{ player.weight }} kg</p>
+                                <p class="text-sm opacity-75">體重</p>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
-        </div>
     </section>
 
     <!-- 關鍵數據 -->
