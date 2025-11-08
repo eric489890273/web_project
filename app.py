@@ -1,72 +1,110 @@
 from flask import Flask, render_template, jsonify
 from datetime import datetime, timedelta
 import random
+import csv
+import os
 
 app = Flask(__name__)
 
-# 模擬球員數據
-PLAYERS_DATA = [
-    {
-        'id': 1,
-        'name': '詹姆斯 · 哈登',
-        'name_en': 'James Harden',
-        'team': '費城76人',
-        'team_en': '76ers',
-        'position': '得分後衛',
-        'number': '13',
-        'avatar': 'https://via.placeholder.com/80',
-        'ppg': 24.8,
-        'apg': 10.2,
-        'rpg': 6.5,
-        'fg_pct': 44.1,
-        'three_pct': 38.5
-    },
-    {
-        'id': 2,
-        'name': '盧卡 · 東契奇',
-        'name_en': 'Luka Doncic',
-        'team': '達拉斯獨行俠',
-        'team_en': 'Mavericks',
-        'position': '控球後衛',
-        'number': '77',
-        'avatar': 'https://via.placeholder.com/80',
-        'ppg': 32.4,
-        'apg': 8.6,
-        'rpg': 8.0,
-        'fg_pct': 49.6,
-        'three_pct': 37.8
-    },
-    {
-        'id': 3,
-        'name': '吉安尼斯 · 安戴托昆波',
-        'name_en': 'Giannis Antetokounmpo',
-        'team': '密爾瓦基公鹿',
-        'team_en': 'Bucks',
-        'position': '大前鋒',
-        'number': '34',
-        'avatar': 'https://via.placeholder.com/80',
-        'ppg': 31.1,
-        'apg': 5.7,
-        'rpg': 11.8,
-        'fg_pct': 55.3,
-        'three_pct': 27.5
-    },
-    {
-        'id': 4,
-        'name': '凱文 · 杜蘭特',
-        'name_en': 'Kevin Durant',
-        'team': '鳳凰城太陽',
-        'team_en': 'Suns',
-        'position': '小前鋒',
-        'number': '35',
-        'avatar': 'https://via.placeholder.com/80',
-        'ppg': 29.1,
-        'apg': 5.0,
-        'rpg': 6.7,
-        'fg_pct': 56.0,
-        'three_pct': 39.7
+# 載入真實球員數據
+def load_players_data():
+    """從 CSV 檔案載入球員數據"""
+    players = []
+    csv_path = os.path.join('data', 'nba_traditional_stats_2025_26.csv')
+
+    try:
+        with open(csv_path, 'r', encoding='utf-8-sig') as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                # 計算場均數據
+                gp = float(row['GP']) if row['GP'] else 1
+
+                player = {
+                    'id': row['PLAYER_ID'],
+                    'name': row['PLAYER_NAME'],
+                    'nickname': row['NICKNAME'] if row['NICKNAME'] else row['PLAYER_NAME'],
+                    'team': row['TEAM_ABBREVIATION'],
+                    'age': row['AGE'],
+                    'gp': int(float(row['GP'])) if row['GP'] else 0,
+                    'min': round(float(row['MIN']) / gp, 1) if row['MIN'] else 0,
+                    'ppg': round(float(row['PTS']) / gp, 1) if row['PTS'] else 0,
+                    'apg': round(float(row['AST']) / gp, 1) if row['AST'] else 0,
+                    'rpg': round(float(row['REB']) / gp, 1) if row['REB'] else 0,
+                    'fg_pct': round(float(row['FG_PCT']) * 100, 1) if row['FG_PCT'] else 0,
+                    'three_pct': round(float(row['FG3_PCT']) * 100, 1) if row['FG3_PCT'] else 0,
+                    'ft_pct': round(float(row['FT_PCT']) * 100, 1) if row['FT_PCT'] else 0,
+                    'stl': round(float(row['STL']) / gp, 1) if row['STL'] else 0,
+                    'blk': round(float(row['BLK']) / gp, 1) if row['BLK'] else 0,
+                    'tov': round(float(row['TOV']) / gp, 1) if row['TOV'] else 0,
+                    'pf': round(float(row['PF']) / gp, 1) if row['PF'] else 0,
+                    'plus_minus': round(float(row['PLUS_MINUS']) / gp, 1) if row['PLUS_MINUS'] else 0,
+                    # 原始總數據
+                    'total_pts': int(float(row['PTS'])) if row['PTS'] else 0,
+                    'total_ast': int(float(row['AST'])) if row['AST'] else 0,
+                    'total_reb': int(float(row['REB'])) if row['REB'] else 0,
+                    'fgm': round(float(row['FGM']) / gp, 1) if row['FGM'] else 0,
+                    'fga': round(float(row['FGA']) / gp, 1) if row['FGA'] else 0,
+                    'fg3m': round(float(row['FG3M']) / gp, 1) if row['FG3M'] else 0,
+                    'fg3a': round(float(row['FG3A']) / gp, 1) if row['FG3A'] else 0,
+                    'ftm': round(float(row['FTM']) / gp, 1) if row['FTM'] else 0,
+                    'fta': round(float(row['FTA']) / gp, 1) if row['FTA'] else 0,
+                    'oreb': round(float(row['OREB']) / gp, 1) if row['OREB'] else 0,
+                    'dreb': round(float(row['DREB']) / gp, 1) if row['DREB'] else 0,
+                    'avatar': 'https://via.placeholder.com/80'
+                }
+                players.append(player)
+    except Exception as e:
+        print(f"載入球員數據失敗: {e}")
+        return []
+
+    # 按得分排序
+    players.sort(key=lambda x: x['ppg'], reverse=True)
+
+    # 獲取所有球隊列表
+    teams = sorted(list(set(p['team'] for p in players)))
+
+    return players, teams
+
+def load_multi_year_data(player_id):
+    """載入球員多年數據用於趨勢分析"""
+    years_data = {}
+    csv_files = {
+        '2021-22': 'nba_traditional_stats_2021_22.csv',
+        '2022-23': 'nba_traditional_stats_2022_23.csv',
+        '2023-24': 'nba_traditional_stats_2023_24.csv',
+        '2024-25': 'nba_traditional_stats_2024_25.csv',
+        '2025-26': 'nba_traditional_stats_2025_26.csv'
     }
-]
+
+    for year, filename in csv_files.items():
+        csv_path = os.path.join('data', filename)
+        try:
+            with open(csv_path, 'r', encoding='utf-8-sig') as f:
+                reader = csv.DictReader(f)
+                for row in reader:
+                    if str(row['PLAYER_ID']) == str(player_id):
+                        gp = float(row['GP']) if row['GP'] else 1
+                        years_data[year] = {
+                            'ppg': round(float(row['PTS']) / gp, 1) if row['PTS'] else 0,
+                            'apg': round(float(row['AST']) / gp, 1) if row['AST'] else 0,
+                            'rpg': round(float(row['REB']) / gp, 1) if row['REB'] else 0,
+                            'fg_pct': round(float(row['FG_PCT']) * 100, 1) if row['FG_PCT'] else 0,
+                            'three_pct': round(float(row['FG3_PCT']) * 100, 1) if row['FG3_PCT'] else 0,
+                            'ft_pct': round(float(row['FT_PCT']) * 100, 1) if row['FT_PCT'] else 0,
+                            'stl': round(float(row['STL']) / gp, 1) if row['STL'] else 0,
+                            'blk': round(float(row['BLK']) / gp, 1) if row['BLK'] else 0,
+                            'gp': int(float(row['GP'])) if row['GP'] else 0,
+                            'min': round(float(row['MIN']) / gp, 1) if row['MIN'] else 0,
+                        }
+                        break
+        except Exception as e:
+            print(f"載入 {year} 數據失敗: {e}")
+            continue
+
+    return years_data
+
+# 載入球員數據
+PLAYERS_DATA, TEAMS_LIST = load_players_data()
 
 # 模擬比賽數據
 GAMES_DATA = {
@@ -181,40 +219,37 @@ def index():
 @app.route('/player_analysis')
 def player_analysis():
     """球員分析頁面"""
-    return render_template('player_analysis.html', players=PLAYERS_DATA)
+    return render_template('player_analysis.html', players=PLAYERS_DATA, teams=TEAMS_LIST)
 
-@app.route('/player/<int:player_id>')
+@app.route('/player/<player_id>')
 def player_detail(player_id):
     """球員詳細分析頁面"""
-    player = next((p for p in PLAYERS_DATA if p['id'] == player_id), None)
+    player = next((p for p in PLAYERS_DATA if str(p['id']) == str(player_id)), None)
     if player:
-        # 準備最近10場得分數據
-        recent_games = [
-            player['ppg'] - 5,
-            player['ppg'] + 3,
-            player['ppg'] - 2,
-            player['ppg'] + 7,
-            player['ppg'],
-            player['ppg'] + 4,
-            player['ppg'] - 3,
-            player['ppg'] + 6,
-            player['ppg'] + 1,
-            player['ppg']
+        # 準備雷達圖數據(歸一化到0-100)
+        max_stats = {
+            'ppg': 35,  # 假設最高得分35
+            'apg': 12,  # 假設最高助攻12
+            'rpg': 15,  # 假設最高籃板15
+            'stl': 2.5, # 假設最高抄截2.5
+            'blk': 3    # 假設最高阻攻3
+        }
+
+        radar_stats = [
+            min(round((player['ppg'] / max_stats['ppg']) * 100, 1), 100),
+            min(round((player['apg'] / max_stats['apg']) * 100, 1), 100),
+            min(round((player['rpg'] / max_stats['rpg']) * 100, 1), 100),
+            min(round((player['stl'] / max_stats['stl']) * 100, 1), 100),
+            min(round((player['blk'] / max_stats['blk']) * 100, 1), 100)
         ]
 
-        # 準備雷達圖數據
-        radar_stats = [
-            round(player['ppg'] * 2.5, 1),
-            round(player['apg'] * 8, 1),
-            round(player['rpg'] * 7, 1),
-            65,
-            55
-        ]
+        # 載入多年數據
+        years_data = load_multi_year_data(player_id)
 
         return render_template('player_detail.html',
                              player=player,
-                             recent_games=recent_games,
-                             radar_stats=radar_stats)
+                             radar_stats=radar_stats,
+                             years_data=years_data)
     return render_template('index.html'), 404
 
 @app.route('/live_scores')

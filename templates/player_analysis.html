@@ -49,24 +49,11 @@
                            class="w-full bg-gray-700 text-white px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
                            onkeyup="filterPlayers()">
                 </div>
-                <select id="positionFilter" class="bg-gray-700 text-white px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500" onchange="filterPlayers()">
-                    <option value="">所有位置</option>
-                    <option value="控球後衛">控球後衛</option>
-                    <option value="得分後衛">得分後衛</option>
-                    <option value="小前鋒">小前鋒</option>
-                    <option value="大前鋒">大前鋒</option>
-                    <option value="中鋒">中鋒</option>
-                </select>
                 <select id="teamFilter" class="bg-gray-700 text-white px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500" onchange="filterPlayers()">
                     <option value="">所有球隊</option>
-                    <option value="洛杉磯湖人">洛杉磯湖人</option>
-                    <option value="金州勇士">金州勇士</option>
-                    <option value="芝加哥公牛">芝加哥公牛</option>
-                    <option value="邁阿密熱火">邁阿密熱火</option>
-                    <option value="費城76人">費城76人</option>
-                    <option value="達拉斯獨行俠">達拉斯獨行俠</option>
-                    <option value="密爾瓦基公鹿">密爾瓦基公鹿</option>
-                    <option value="鳳凰城太陽">鳳凰城太陽</option>
+                    {% for team in teams %}
+                    <option value="{{ team }}">{{ team }}</option>
+                    {% endfor %}
                 </select>
                 <button class="bg-purple-600 hover:bg-purple-700 px-6 py-3 rounded-lg font-bold transition" onclick="resetFilters()">
                     <i class="fas fa-redo mr-2"></i>重置
@@ -75,247 +62,191 @@
         </div>
     </section>    <!-- 球員列表 -->
     <section class="container mx-auto px-6 py-8">
-        <h2 class="text-3xl font-bold mb-6">頂尖球員</h2>
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div class="flex justify-between items-center mb-6">
+            <h2 class="text-3xl font-bold">NBA球員列表 (<span id="playerCount">{{ players|length }}</span> 位)</h2>
+            <div class="text-gray-400">
+                第 <span id="currentPage">1</span> 頁 / 共 <span id="totalPages"></span> 頁
+            </div>
+        </div>
 
-            <!-- 球員卡片 1 -->
+        <div id="playerContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {% for player in players %}
+            <!-- 球員卡片 {{ player.name }} -->
             <div class="card-hover bg-gray-800 rounded-xl overflow-hidden shadow-xl fade-in player-card"
-                 data-name="詹姆斯 · 哈登"
-                 data-position="得分後衛"
-                 data-team="費城76人">
-                <div class="bg-gradient-to-r from-yellow-500 to-orange-500 p-6">
-                    <div class="flex items-center space-x-4">
-                        <img src="https://via.placeholder.com/80" alt="Player" class="rounded-full border-4 border-white">
-                        <div>
-                            <h3 class="text-2xl font-bold">詹姆斯 · 哈登</h3>
-                            <p class="text-sm opacity-90">得分後衛 · #13</p>
-                            <p class="text-xs opacity-75">費城76人</p>
-                        </div>
-                    </div>
-                </div>
-                <div class="p-6">
-                    <div class="grid grid-cols-3 gap-4 mb-4">
-                        <div class="text-center">
-                            <p class="text-2xl font-bold text-yellow-400">24.8</p>
-                            <p class="text-xs text-gray-400">PPG</p>
-                        </div>
-                        <div class="text-center">
-                            <p class="text-2xl font-bold text-blue-400">10.2</p>
-                            <p class="text-xs text-gray-400">APG</p>
-                        </div>
-                        <div class="text-center">
-                            <p class="text-2xl font-bold text-green-400">6.5</p>
-                            <p class="text-xs text-gray-400">RPG</p>
-                        </div>
-                    </div>
-                    <div class="space-y-2">
-                        <div class="flex justify-between text-sm">
-                            <span>投籃命中率</span>
-                            <span class="font-bold">44.1%</span>
-                        </div>
-                        <div class="w-full bg-gray-700 rounded-full h-2">
-                            <div class="bg-yellow-400 h-2 rounded-full" style="width: 44.1%"></div>
-                        </div>
-                        <div class="flex justify-between text-sm">
-                            <span>三分命中率</span>
-                            <span class="font-bold">38.5%</span>
-                        </div>
-                        <div class="w-full bg-gray-700 rounded-full h-2">
-                            <div class="bg-blue-400 h-2 rounded-full" style="width: 38.5%"></div>
-                        </div>
-                    </div>
-                    <button class="mt-6 w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 py-3 rounded-lg font-bold transition" onclick="window.location.href='/player/1'">
-                        查看完整分析 <i class="fas fa-arrow-right ml-2"></i>
-                    </button>
-                </div>
-            </div>
-
-            <!-- 球員卡片 2 -->
-            <div class="card-hover bg-gray-800 rounded-xl overflow-hidden shadow-xl fade-in player-card" style="animation-delay: 0.1s;"
-                 data-name="盧卡 · 東契奇"
-                 data-position="控球後衛"
-                 data-team="達拉斯獨行俠">
-                <div class="bg-gradient-to-r from-blue-500 to-cyan-500 p-6">
-                    <div class="flex items-center space-x-4">
-                        <img src="https://via.placeholder.com/80" alt="Player" class="rounded-full border-4 border-white">
-                        <div>
-                            <h3 class="text-2xl font-bold">盧卡 · 東契奇</h3>
-                            <p class="text-sm opacity-90">控球後衛 · #77</p>
-                            <p class="text-xs opacity-75">達拉斯獨行俠</p>
-                        </div>
-                    </div>
-                </div>
-                <div class="p-6">
-                    <div class="grid grid-cols-3 gap-4 mb-4">
-                        <div class="text-center">
-                            <p class="text-2xl font-bold text-yellow-400">32.4</p>
-                            <p class="text-xs text-gray-400">PPG</p>
-                        </div>
-                        <div class="text-center">
-                            <p class="text-2xl font-bold text-blue-400">8.6</p>
-                            <p class="text-xs text-gray-400">APG</p>
-                        </div>
-                        <div class="text-center">
-                            <p class="text-2xl font-bold text-green-400">8.0</p>
-                            <p class="text-xs text-gray-400">RPG</p>
-                        </div>
-                    </div>
-                    <div class="space-y-2">
-                        <div class="flex justify-between text-sm">
-                            <span>投籃命中率</span>
-                            <span class="font-bold">49.6%</span>
-                        </div>
-                        <div class="w-full bg-gray-700 rounded-full h-2">
-                            <div class="bg-yellow-400 h-2 rounded-full" style="width: 49.6%"></div>
-                        </div>
-                        <div class="flex justify-between text-sm">
-                            <span>三分命中率</span>
-                            <span class="font-bold">37.8%</span>
-                        </div>
-                        <div class="w-full bg-gray-700 rounded-full h-2">
-                            <div class="bg-blue-400 h-2 rounded-full" style="width: 37.8%"></div>
-                        </div>
-                    </div>
-                    <button class="mt-6 w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 py-3 rounded-lg font-bold transition" onclick="window.location.href='/player/2'">
-                        查看完整分析 <i class="fas fa-arrow-right ml-2"></i>
-                    </button>
-                </div>
-            </div>
-
-            <!-- 球員卡片 3 -->
-            <div class="card-hover bg-gray-800 rounded-xl overflow-hidden shadow-xl fade-in player-card" style="animation-delay: 0.2s;"
-                 data-name="吉安尼斯"
-                 data-position="大前鋒"
-                 data-team="密爾瓦基公鹿">
+                 data-name="{{ player.name }}"
+                 data-team="{{ player.team }}"
+                 data-index="{{ loop.index0 }}">
                 <div class="bg-gradient-to-r from-purple-500 to-pink-500 p-6">
-                    <div class="flex items-center space-x-4">
-                        <img src="https://via.placeholder.com/80" alt="Player" class="rounded-full border-4 border-white">
-                        <div>
-                            <h3 class="text-2xl font-bold">吉安尼斯</h3>
-                            <p class="text-sm opacity-90">大前鋒 · #34</p>
-                            <p class="text-xs opacity-75">密爾瓦基公鹿</p>
-                        </div>
+                    <div>
+                        <h3 class="text-xl font-bold">{{ player.name }}</h3>
+                        <p class="text-sm opacity-90">{{ player.team }} · {{ player.age }}歲</p>
                     </div>
                 </div>
                 <div class="p-6">
                     <div class="grid grid-cols-3 gap-4 mb-4">
                         <div class="text-center">
-                            <p class="text-2xl font-bold text-yellow-400">31.1</p>
-                            <p class="text-xs text-gray-400">PPG</p>
+                            <p class="text-2xl font-bold text-yellow-400">{{ player.ppg }}</p>
+                            <p class="text-xs text-gray-400">得分</p>
                         </div>
                         <div class="text-center">
-                            <p class="text-2xl font-bold text-blue-400">5.7</p>
-                            <p class="text-xs text-gray-400">APG</p>
+                            <p class="text-2xl font-bold text-blue-400">{{ player.apg }}</p>
+                            <p class="text-xs text-gray-400">助攻</p>
                         </div>
                         <div class="text-center">
-                            <p class="text-2xl font-bold text-green-400">11.8</p>
-                            <p class="text-xs text-gray-400">RPG</p>
+                            <p class="text-2xl font-bold text-green-400">{{ player.rpg }}</p>
+                            <p class="text-xs text-gray-400">籃板</p>
                         </div>
                     </div>
                     <div class="space-y-2">
                         <div class="flex justify-between text-sm">
                             <span>投籃命中率</span>
-                            <span class="font-bold">55.3%</span>
+                            <span class="font-bold">{{ player.fg_pct }}%</span>
                         </div>
                         <div class="w-full bg-gray-700 rounded-full h-2">
-                            <div class="bg-yellow-400 h-2 rounded-full" style="width: 55.3%"></div>
+                            <div class="bg-gradient-to-r from-yellow-400 to-orange-500 h-2 rounded-full" style="width: {{ player.fg_pct }}%"></div>
                         </div>
                         <div class="flex justify-between text-sm">
                             <span>三分命中率</span>
-                            <span class="font-bold">27.5%</span>
+                            <span class="font-bold">{{ player.three_pct }}%</span>
                         </div>
                         <div class="w-full bg-gray-700 rounded-full h-2">
-                            <div class="bg-blue-400 h-2 rounded-full" style="width: 27.5%"></div>
+                            <div class="bg-gradient-to-r from-blue-400 to-cyan-500 h-2 rounded-full" style="width: {{ player.three_pct }}%"></div>
                         </div>
                     </div>
-                    <button class="mt-6 w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 py-3 rounded-lg font-bold transition" onclick="window.location.href='/player/3'">
+                    <button class="mt-6 w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 py-3 rounded-lg font-bold transition" onclick="window.location.href='/player/{{ player.id }}'">
                         查看完整分析 <i class="fas fa-arrow-right ml-2"></i>
                     </button>
                 </div>
             </div>
+            {% endfor %}
+        </div>
 
-            <!-- 更多球員卡片... -->
-            <div class="card-hover bg-gray-800 rounded-xl overflow-hidden shadow-xl fade-in player-card" style="animation-delay: 0.3s;"
-                 data-name="凱文 · 杜蘭特"
-                 data-position="小前鋒"
-                 data-team="鳳凰城太陽">
-                <div class="bg-gradient-to-r from-green-500 to-emerald-500 p-6">
-                    <div class="flex items-center space-x-4">
-                        <img src="https://via.placeholder.com/80" alt="Player" class="rounded-full border-4 border-white">
-                        <div>
-                            <h3 class="text-2xl font-bold">凱文 · 杜蘭特</h3>
-                            <p class="text-sm opacity-90">小前鋒 · #35</p>
-                            <p class="text-xs opacity-75">鳳凰城太陽</p>
-                        </div>
-                    </div>
-                </div>
-                <div class="p-6">
-                    <div class="grid grid-cols-3 gap-4 mb-4">
-                        <div class="text-center">
-                            <p class="text-2xl font-bold text-yellow-400">29.1</p>
-                            <p class="text-xs text-gray-400">PPG</p>
-                        </div>
-                        <div class="text-center">
-                            <p class="text-2xl font-bold text-blue-400">5.0</p>
-                            <p class="text-xs text-gray-400">APG</p>
-                        </div>
-                        <div class="text-center">
-                            <p class="text-2xl font-bold text-green-400">6.7</p>
-                            <p class="text-xs text-gray-400">RPG</p>
-                        </div>
-                    </div>
-                    <div class="space-y-2">
-                        <div class="flex justify-between text-sm">
-                            <span>投籃命中率</span>
-                            <span class="font-bold">56.0%</span>
-                        </div>
-                        <div class="w-full bg-gray-700 rounded-full h-2">
-                            <div class="bg-yellow-400 h-2 rounded-full" style="width: 56.0%"></div>
-                        </div>
-                        <div class="flex justify-between text-sm">
-                            <span>三分命中率</span>
-                            <span class="font-bold">39.7%</span>
-                        </div>
-                        <div class="w-full bg-gray-700 rounded-full h-2">
-                            <div class="bg-blue-400 h-2 rounded-full" style="width: 39.7%"></div>
-                        </div>
-                    </div>
-                    <button class="mt-6 w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 py-3 rounded-lg font-bold transition" onclick="window.location.href='/player/4'">
-                        查看完整分析 <i class="fas fa-arrow-right ml-2"></i>
-                    </button>
-                </div>
-            </div>
-
+        <!-- 分頁按鈕 -->
+        <div class="flex justify-center items-center gap-4 mt-8">
+            <button id="prevBtn" class="bg-purple-600 hover:bg-purple-700 px-6 py-3 rounded-lg font-bold transition disabled:opacity-50 disabled:cursor-not-allowed" onclick="changePage(-1)">
+                <i class="fas fa-chevron-left mr-2"></i>上一頁
+            </button>
+            <div id="pageNumbers" class="flex gap-2"></div>
+            <button id="nextBtn" class="bg-purple-600 hover:bg-purple-700 px-6 py-3 rounded-lg font-bold transition disabled:opacity-50 disabled:cursor-not-allowed" onclick="changePage(1)">
+                下一頁<i class="fas fa-chevron-right ml-2"></i>
+            </button>
         </div>
     </section>
 
     <!-- 統計圖表區 -->
-    <section class="container mx-auto px-6 py-8">
-        <h2 class="text-3xl font-bold mb-6">數據趨勢</h2>
+    <section class="container mx-auto px-6 py-8 pb-12">
+        <h2 class="text-3xl font-bold mb-6">頂尖球員數據對比</h2>
         <div class="bg-gray-800 rounded-xl p-6 shadow-xl">
             <canvas id="playerChart" class="w-full" height="100"></canvas>
         </div>
     </section>
 
     <script>
+        // 分頁設定
+        const ITEMS_PER_PAGE = 50;
+        let currentPage = 1;
+        let allPlayers = [];
+        let filteredPlayers = [];
+
+        // 初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            allPlayers = Array.from(document.querySelectorAll('.player-card'));
+            filteredPlayers = [...allPlayers];
+            updatePagination();
+            showPage(1);
+        });
+
+        // 顯示指定頁面
+        function showPage(page) {
+            currentPage = page;
+            const start = (page - 1) * ITEMS_PER_PAGE;
+            const end = start + ITEMS_PER_PAGE;
+
+            // 隱藏所有卡片
+            allPlayers.forEach(card => card.style.display = 'none');
+
+            // 顯示當前頁的卡片
+            filteredPlayers.slice(start, end).forEach(card => {
+                card.style.display = 'block';
+            });
+
+            // 更新頁面資訊和按鈕狀態
+            document.getElementById('currentPage').textContent = page;
+            updatePagination();  // 重新生成頁碼按鈕以更新顏色
+            updatePaginationButtons();
+        }
+
+        // 更新分頁資訊
+        function updatePagination() {
+            const totalPages = Math.ceil(filteredPlayers.length / ITEMS_PER_PAGE);
+            document.getElementById('totalPages').textContent = totalPages;
+            document.getElementById('playerCount').textContent = filteredPlayers.length;
+
+            // 生成頁碼按鈕
+            const pageNumbersDiv = document.getElementById('pageNumbers');
+            pageNumbersDiv.innerHTML = '';
+
+            if (totalPages === 0) return;
+
+            const maxButtons = 5;
+            let startPage = Math.max(1, currentPage - Math.floor(maxButtons / 2));
+            let endPage = Math.min(totalPages, startPage + maxButtons - 1);
+
+            if (endPage - startPage < maxButtons - 1) {
+                startPage = Math.max(1, endPage - maxButtons + 1);
+            }
+
+            for (let i = startPage; i <= endPage; i++) {
+                const btn = document.createElement('button');
+                btn.textContent = i;
+                btn.className = `px-4 py-2 rounded-lg font-bold transition ${i === currentPage ? 'bg-pink-600' : 'bg-gray-700 hover:bg-gray-600'}`;
+                btn.onclick = () => showPage(i);
+                pageNumbersDiv.appendChild(btn);
+            }
+        }
+
+        // 更新分頁按鈕狀態
+        function updatePaginationButtons() {
+            const totalPages = Math.ceil(filteredPlayers.length / ITEMS_PER_PAGE);
+            document.getElementById('prevBtn').disabled = currentPage === 1;
+            document.getElementById('nextBtn').disabled = currentPage === totalPages;
+        }
+
+        // 換頁
+        function changePage(delta) {
+            const totalPages = Math.ceil(filteredPlayers.length / ITEMS_PER_PAGE);
+            const newPage = currentPage + delta;
+            if (newPage >= 1 && newPage <= totalPages) {
+                showPage(newPage);
+            }
+        }
+
         // Chart.js 圖表
         const ctx = document.getElementById('playerChart').getContext('2d');
+        const topPlayers = {{ players[:5] | tojson }};
+
         new Chart(ctx, {
-            type: 'line',
+            type: 'bar',
             data: {
-                labels: ['第1週', '第2週', '第3週', '第4週', '第5週', '第6週'],
+                labels: topPlayers.map(p => p.name),
                 datasets: [{
-                    label: '哈登 PPG',
-                    data: [22.5, 24.1, 23.8, 25.2, 24.8, 26.1],
+                    label: '場均得分',
+                    data: topPlayers.map(p => p.ppg),
+                    backgroundColor: 'rgba(251, 191, 36, 0.8)',
                     borderColor: 'rgb(251, 191, 36)',
-                    backgroundColor: 'rgba(251, 191, 36, 0.1)',
-                    tension: 0.4
+                    borderWidth: 1
                 }, {
-                    label: '東契奇 PPG',
-                    data: [30.2, 31.5, 32.1, 33.0, 32.4, 34.2],
+                    label: '場均助攻',
+                    data: topPlayers.map(p => p.apg),
+                    backgroundColor: 'rgba(59, 130, 246, 0.8)',
                     borderColor: 'rgb(59, 130, 246)',
-                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
-                    tension: 0.4
+                    borderWidth: 1
+                }, {
+                    label: '場均籃板',
+                    data: topPlayers.map(p => p.rpg),
+                    backgroundColor: 'rgba(34, 197, 94, 0.8)',
+                    borderColor: 'rgb(34, 197, 94)',
+                    borderWidth: 1
                 }]
             },
             options: {
@@ -327,6 +258,7 @@
                 },
                 scales: {
                     y: {
+                        beginAtZero: true,
                         ticks: { color: 'white' },
                         grid: { color: 'rgba(255, 255, 255, 0.1)' }
                     },
@@ -341,42 +273,25 @@
         // 篩選球員功能
         function filterPlayers() {
             const searchTerm = document.getElementById('searchInput').value.toLowerCase();
-            const positionFilter = document.getElementById('positionFilter').value;
             const teamFilter = document.getElementById('teamFilter').value;
-            const playerCards = document.querySelectorAll('.player-card');
 
-            let visibleCount = 0;
-
-            playerCards.forEach(card => {
+            filteredPlayers = allPlayers.filter(card => {
                 const name = card.dataset.name.toLowerCase();
-                const position = card.dataset.position;
                 const team = card.dataset.team;
 
                 const matchesSearch = name.includes(searchTerm);
-                const matchesPosition = !positionFilter || position === positionFilter;
                 const matchesTeam = !teamFilter || team === teamFilter;
 
-                if (matchesSearch && matchesPosition && matchesTeam) {
-                    card.style.display = 'block';
-                    visibleCount++;
-                } else {
-                    card.style.display = 'none';
-                }
+                return matchesSearch && matchesTeam;
             });
 
-            // 顯示搜尋結果數量
-            const title = document.querySelector('h2');
-            if (visibleCount === playerCards.length) {
-                title.textContent = '頂尖球員';
-            } else {
-                title.textContent = `找到 ${visibleCount} 位球員`;
-            }
+            updatePagination();
+            showPage(1);
         }
 
         // 重置篩選
         function resetFilters() {
             document.getElementById('searchInput').value = '';
-            document.getElementById('positionFilter').value = '';
             document.getElementById('teamFilter').value = '';
             filterPlayers();
         }
