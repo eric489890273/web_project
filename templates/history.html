@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>運動數據歷史 - 籃球分析系統</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .gradient-bg { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+        .card-hover { transition: all 0.3s ease; }
+        .card-hover:hover { transform: translateY(-5px); box-shadow: 0 15px 30px rgba(0, 0, 0, 0.3); }
+    </style>
+</head>
+<body class="bg-gray-900 text-white">
+    <!-- 導航欄 -->
+    <nav class="gradient-bg shadow-lg sticky top-0 z-50">
+        <div class="container mx-auto px-6 py-4">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-4">
+                    <i class="fas fa-basketball-ball text-3xl"></i>
+                    <h1 class="text-2xl font-bold">運動數據歷史</h1>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <span class="text-gray-200">
+                        <i class="fas fa-user-circle mr-2"></i>{{ session.username }}
+                    </span>
+                    <a href="{{ url_for('logout') }}" class="bg-red-500 hover:bg-red-600 px-4 py-2 rounded-lg transition">
+                        <i class="fas fa-sign-out-alt mr-2"></i>登出
+                    </a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- 主要內容 -->
+    <div class="container mx-auto px-6 py-8">
+        <!-- 返回按鈕 -->
+        <div class="mb-6">
+            <a href="{{ url_for('statistics') }}" class="bg-purple-600 hover:bg-purple-700 px-6 py-3 rounded-lg transition inline-block">
+                <i class="fas fa-arrow-left mr-2"></i>返回數據分析
+            </a>
+        </div>
+
+        <!-- 統計卡片 -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+            <div class="bg-gray-800 rounded-xl p-6 shadow-xl">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-400 text-sm">總記錄數</p>
+                        <p class="text-3xl font-bold text-purple-400">{{ history|length }}</p>
+                    </div>
+                    <i class="fas fa-database text-4xl text-purple-400"></i>
+                </div>
+            </div>
+
+            {% if history|length > 0 %}
+            <div class="bg-gray-800 rounded-xl p-6 shadow-xl">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-400 text-sm">總消耗卡路里</p>
+                        <p class="text-3xl font-bold text-yellow-400">{{ "%.0f"|format(history|sum(attribute='calories')) }}</p>
+                    </div>
+                    <i class="fas fa-fire text-4xl text-yellow-400"></i>
+                </div>
+            </div>
+
+            <div class="bg-gray-800 rounded-xl p-6 shadow-xl">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-400 text-sm">總運動時間</p>
+                        <p class="text-3xl font-bold text-green-400">{{ history|sum(attribute='duration') }}</p>
+                        <p class="text-xs text-gray-400">分鐘</p>
+                    </div>
+                    <i class="fas fa-clock text-4xl text-green-400"></i>
+                </div>
+            </div>
+
+            <div class="bg-gray-800 rounded-xl p-6 shadow-xl">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-400 text-sm">平均效率分數</p>
+                        <p class="text-3xl font-bold text-blue-400">{{ "%.1f"|format(history|sum(attribute='efficiency_score') / history|length) }}</p>
+                    </div>
+                    <i class="fas fa-trophy text-4xl text-blue-400"></i>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- 趨勢圖表 -->
+        {% if history|length > 0 %}
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+            <div class="bg-gray-800 rounded-xl p-6 shadow-xl">
+                <h3 class="text-xl font-bold mb-4">
+                    <i class="fas fa-chart-line text-yellow-400 mr-2"></i>卡路里消耗趨勢
+                </h3>
+                <canvas id="caloriesChart" height="200"></canvas>
+            </div>
+
+            <div class="bg-gray-800 rounded-xl p-6 shadow-xl">
+                <h3 class="text-xl font-bold mb-4">
+                    <i class="fas fa-chart-bar text-green-400 mr-2"></i>運動時長分布
+                </h3>
+                <canvas id="durationChart" height="200"></canvas>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- 歷史記錄列表 -->
+        <div class="bg-gray-800 rounded-xl shadow-xl overflow-hidden">
+            <div class="p-6 border-b border-gray-700">
+                <h2 class="text-2xl font-bold">
+                    <i class="fas fa-history mr-2 text-purple-500"></i>運動記錄
+                </h2>
+            </div>
+
+            {% if history|length == 0 %}
+            <div class="p-12 text-center text-gray-400">
+                <i class="fas fa-inbox text-6xl mb-4"></i>
+                <p class="text-xl">還沒有任何運動記錄</p>
+                <p class="mt-2">前往運動數據分析頁面開始記錄您的運動數據吧!</p>
+                <a href="{{ url_for('statistics') }}" class="mt-6 inline-block bg-purple-600 hover:bg-purple-700 px-6 py-3 rounded-lg transition">
+                    <i class="fas fa-plus mr-2"></i>開始分析
+                </a>
+            </div>
+            {% else %}
+            <div class="overflow-x-auto">
+                <table class="w-full">
+                    <thead class="bg-gray-700">
+                        <tr>
+                            <th class="px-6 py-4 text-left">日期時間</th>
+                            <th class="px-6 py-4 text-left">運動類型</th>
+                            <th class="px-6 py-4 text-left">時長</th>
+                            <th class="px-6 py-4 text-left">卡路里</th>
+                            <th class="px-6 py-4 text-left">心率</th>
+                            <th class="px-6 py-4 text-left">心率區間</th>
+                            <th class="px-6 py-4 text-left">效率分數</th>
+                            <th class="px-6 py-4 text-left">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for record in history %}
+                        <tr class="border-b border-gray-700 hover:bg-gray-700/50 transition" id="record-{{ record.id }}">
+                            <td class="px-6 py-4">
+                                <i class="fas fa-calendar-alt text-gray-400 mr-2"></i>
+                                {{ record.created_at }}
+                            </td>
+                            <td class="px-6 py-4">
+                                <span class="px-3 py-1 bg-purple-500/20 text-purple-400 rounded-full text-sm">
+                                    {{ record.exercise_type }}
+                                </span>
+                            </td>
+                            <td class="px-6 py-4">
+                                <i class="fas fa-clock text-green-400 mr-2"></i>
+                                {{ record.duration }} 分鐘
+                            </td>
+                            <td class="px-6 py-4">
+                                <i class="fas fa-fire text-yellow-400 mr-2"></i>
+                                {{ "%.0f"|format(record.calories) }} 卡
+                            </td>
+                            <td class="px-6 py-4">
+                                <i class="fas fa-heartbeat text-red-400 mr-2"></i>
+                                {{ record.heart_rate }} bpm
+                            </td>
+                            <td class="px-6 py-4">
+                                {% if record.heart_rate_zone == '高強度區' %}
+                                    <span class="px-3 py-1 bg-red-500/20 text-red-400 rounded-full text-sm">{{ record.heart_rate_zone }}</span>
+                                {% elif record.heart_rate_zone == '有氧區' %}
+                                    <span class="px-3 py-1 bg-orange-500/20 text-orange-400 rounded-full text-sm">{{ record.heart_rate_zone }}</span>
+                                {% elif record.heart_rate_zone == '燃脂區' %}
+                                    <span class="px-3 py-1 bg-yellow-500/20 text-yellow-400 rounded-full text-sm">{{ record.heart_rate_zone }}</span>
+                                {% else %}
+                                    <span class="px-3 py-1 bg-blue-500/20 text-blue-400 rounded-full text-sm">{{ record.heart_rate_zone }}</span>
+                                {% endif %}
+                            </td>
+                            <td class="px-6 py-4">
+                                <span class="text-lg font-bold text-green-400">
+                                    {{ "%.1f"|format(record.efficiency_score) }}
+                                </span>
+                            </td>
+                            <td class="px-6 py-4">
+                                <button onclick="deleteRecord({{ record.id }})"
+                                        class="bg-red-500/20 hover:bg-red-500/40 text-red-400 px-4 py-2 rounded-lg transition">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <script>
+        // 刪除記錄
+        async function deleteRecord(recordId) {
+            if (!confirm('確定要刪除這條記錄嗎?')) return;
+
+            try {
+                const response = await fetch(`/delete_history/${recordId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    // 移除該行
+                    document.getElementById(`record-${recordId}`).remove();
+                    alert('記錄已刪除');
+                    location.reload(); // 重新載入以更新統計數據
+                } else {
+                    alert('刪除失敗: ' + result.message);
+                }
+            } catch (error) {
+                alert('刪除失敗: ' + error.message);
+            }
+        }
+
+        {% if history|length > 0 %}
+        // 準備圖表數據
+        const historyData = {{ history|tojson }};
+        const labels = historyData.map(r => r.created_at.split(' ')[0]).reverse();
+        const calories = historyData.map(r => r.calories).reverse();
+        const durations = historyData.map(r => r.duration).reverse();
+
+        // 卡路里趨勢圖
+        new Chart(document.getElementById('caloriesChart'), {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: '卡路里消耗',
+                    data: calories,
+                    borderColor: 'rgb(251, 191, 36)',
+                    backgroundColor: 'rgba(251, 191, 36, 0.1)',
+                    borderWidth: 3,
+                    fill: true,
+                    tension: 0.4
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: { labels: { color: '#e5e7eb' } }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: { color: '#9ca3af' },
+                        grid: { color: 'rgba(156, 163, 175, 0.1)' }
+                    },
+                    x: {
+                        ticks: { color: '#e5e7eb' },
+                        grid: { display: false }
+                    }
+                }
+            }
+        });
+
+        // 運動時長圖
+        new Chart(document.getElementById('durationChart'), {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: '運動時長 (分鐘)',
+                    data: durations,
+                    backgroundColor: 'rgba(34, 197, 94, 0.8)',
+                    borderColor: 'rgb(34, 197, 94)',
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: { labels: { color: '#e5e7eb' } }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: { color: '#9ca3af' },
+                        grid: { color: 'rgba(156, 163, 175, 0.1)' }
+                    },
+                    x: {
+                        ticks: { color: '#e5e7eb' },
+                        grid: { display: false }
+                    }
+                }
+            }
+        });
+        {% endif %}
+    </script>
+</body>
+</html>

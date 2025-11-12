@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>註冊 - 籃球分析系統</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .gradient-bg { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .fade-in { animation: fadeIn 0.6s ease-out; }
+    </style>
+</head>
+<body class="bg-gray-900 text-white min-h-screen flex items-center justify-center py-12">
+    <div class="absolute inset-0 gradient-bg opacity-20"></div>
+
+    <div class="relative z-10 w-full max-w-md px-6">
+        <div class="fade-in bg-gray-800 rounded-2xl shadow-2xl p-8">
+            <!-- Logo -->
+            <div class="text-center mb-8">
+                <i class="fas fa-basketball-ball text-6xl text-purple-500 mb-4"></i>
+                <h1 class="text-3xl font-bold mb-2">籃球分析系統</h1>
+                <p class="text-gray-400">創建新帳號</p>
+            </div>
+
+            <!-- Flash Messages -->
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                    <div class="mb-4 p-4 rounded-lg {% if category == 'error' %}bg-red-500/20 text-red-400{% else %}bg-green-500/20 text-green-400{% endif %}">
+                        <i class="fas {% if category == 'error' %}fa-exclamation-circle{% else %}fa-check-circle{% endif %} mr-2"></i>
+                        {{ message }}
+                    </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            <!-- Register Form -->
+            <form method="POST" action="{{ url_for('register') }}" onsubmit="return validateForm()">
+                <div class="mb-5">
+                    <label class="block text-gray-300 mb-2" for="username">
+                        <i class="fas fa-user mr-2"></i>用戶名
+                    </label>
+                    <input type="text" id="username" name="username" required
+                           class="w-full bg-gray-700 text-white px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                           placeholder="請輸入用戶名" minlength="3">
+                    <p class="text-xs text-gray-400 mt-1">至少3個字符</p>
+                </div>
+
+                <div class="mb-5">
+                    <label class="block text-gray-300 mb-2" for="email">
+                        <i class="fas fa-envelope mr-2"></i>電子郵箱
+                    </label>
+                    <input type="email" id="email" name="email" required
+                           class="w-full bg-gray-700 text-white px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                           placeholder="請輸入電子郵箱">
+                </div>
+
+                <div class="mb-5">
+                    <label class="block text-gray-300 mb-2" for="password">
+                        <i class="fas fa-lock mr-2"></i>密碼
+                    </label>
+                    <input type="password" id="password" name="password" required
+                           class="w-full bg-gray-700 text-white px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                           placeholder="請輸入密碼" minlength="6">
+                    <p class="text-xs text-gray-400 mt-1">至少6個字符</p>
+                </div>
+
+                <div class="mb-6">
+                    <label class="block text-gray-300 mb-2" for="confirm_password">
+                        <i class="fas fa-lock mr-2"></i>確認密碼
+                    </label>
+                    <input type="password" id="confirm_password" name="confirm_password" required
+                           class="w-full bg-gray-700 text-white px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                           placeholder="請再次輸入密碼">
+                </div>
+
+                <button type="submit"
+                        class="w-full gradient-bg text-white font-bold py-3 rounded-lg hover:opacity-90 transition transform hover:scale-105">
+                    <i class="fas fa-user-plus mr-2"></i>註冊
+                </button>
+            </form>
+
+            <!-- Divider -->
+            <div class="my-6 flex items-center">
+                <div class="flex-1 border-t border-gray-700"></div>
+                <span class="px-4 text-gray-500">或</span>
+                <div class="flex-1 border-t border-gray-700"></div>
+            </div>
+
+            <!-- Login Link -->
+            <div class="text-center">
+                <p class="text-gray-400 mb-4">已經有帳號?</p>
+                <a href="{{ url_for('login') }}"
+                   class="block w-full bg-gray-700 text-white font-bold py-3 rounded-lg hover:bg-gray-600 transition">
+                    <i class="fas fa-sign-in-alt mr-2"></i>立即登入
+                </a>
+            </div>
+
+            <!-- Back to Home -->
+            <div class="text-center mt-6">
+                <a href="{{ url_for('index') }}" class="text-purple-400 hover:text-purple-300">
+                    <i class="fas fa-home mr-2"></i>返回首頁
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function validateForm() {
+            const password = document.getElementById('password').value;
+            const confirmPassword = document.getElementById('confirm_password').value;
+
+            if (password !== confirmPassword) {
+                alert('兩次密碼輸入不一致!');
+                return false;
+            }
+
+            if (password.length < 6) {
+                alert('密碼長度至少6個字符!');
+                return false;
+            }
+
+            return true;
+        }
+    </script>
+</body>
+</html>

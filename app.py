@@ -1,10 +1,59 @@
-from flask import Flask, render_template, jsonify
+from flask import Flask, render_template, jsonify, request, redirect, url_for, session, flash
 from datetime import datetime, timedelta
+from werkzeug.security import generate_password_hash, check_password_hash
 import random
 import csv
 import os
+import sqlite3
+import json
 
 app = Flask(__name__)
+app.secret_key = 'your-secret-key-change-this-in-production'  # 請在生產環境中更改此密鑰
+
+# 資料庫初始化
+def init_db():
+    """初始化資料庫"""
+    conn = sqlite3.connect('data/users.db')
+    c = conn.cursor()
+
+    # 用戶表
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT UNIQUE NOT NULL,
+            email TEXT UNIQUE NOT NULL,
+            password TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+
+    # 運動數據歷史記錄表
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS exercise_history (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            exercise_type TEXT NOT NULL,
+            duration INTEGER NOT NULL,
+            weight REAL,
+            height REAL,
+            age INTEGER,
+            gender TEXT,
+            heart_rate INTEGER,
+            temperature REAL,
+            calories REAL,
+            met REAL,
+            heart_rate_zone TEXT,
+            efficiency_score REAL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users (id)
+        )
+    ''')
+
+    conn.commit()
+    conn.close()
+
+# 初始化資料庫
+init_db()
 
 # 載入真實球員數據
 def load_players_data():
@@ -216,6 +265,81 @@ def index():
     """首頁"""
     return render_template('index.html')
 
+# ========== 用戶認證路由 ==========
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    """登入頁面"""
+    if request.method == 'POST':
+        username = request.form.get('username')
+        password = request.form.get('password')
+
+        conn = sqlite3.connect('data/users.db')
+        c = conn.cursor()
+        c.execute('SELECT * FROM users WHERE username = ?', (username,))
+        user = c.fetchone()
+        conn.close()
+
+        if user and check_password_hash(user[3], password):
+            session['user_id'] = user[0]
+            session['username'] = user[1]
+            flash('登入成功!', 'success')
+            return redirect(url_for('index'))
+        else:
+            flash('用戶名或密碼錯誤', 'error')
+
+    return render_template('login.html')
+
+@app.route('/register', methods=['GET', 'POST'])
+def register():
+    """註冊頁面"""
+    if request.method == 'POST':
+        username = request.form.get('username')
+        email = request.form.get('email')
+        password = request.form.get('password')
+        confirm_password = request.form.get('confirm_password')
+
+        # 驗證
+        if password != confirm_password:
+            flash('兩次密碼輸入不一致', 'error')
+            return render_template('register.html')
+
+        if len(password) < 6:
+            flash('密碼長度至少6個字符', 'error')
+            return render_template('register.html')
+
+        # 檢查用戶是否已存在
+        conn = sqlite3.connect('data/users.db')
+        c = conn.cursor()
+        c.execute('SELECT * FROM users WHERE username = ? OR email = ?', (username, email))
+        existing_user = c.fetchone()
+
+        if existing_user:
+            flash('用戶名或郵箱已被使用', 'error')
+            conn.close()
+            return render_template('register.html')
+
+        # 創建新用戶
+        hashed_password = generate_password_hash(password)
+        c.execute('INSERT INTO users (username, email, password) VALUES (?, ?, ?)',
+                 (username, email, hashed_password))
+        conn.commit()
+        conn.close()
+
+        flash('註冊成功!請登入', 'success')
+        return redirect(url_for('login'))
+
+    return render_template('register.html')
+
+@app.route('/logout')
+def logout():
+    """登出"""
+    session.clear()
+    flash('已成功登出', 'success')
+    return redirect(url_for('index'))
+
+# ========== 原有路由 ==========
+
 @app.route('/player_analysis')
 def player_analysis():
     """球員分析頁面"""
@@ -261,6 +385,102 @@ def live_scores():
 def statistics():
     """數據分析頁面"""
     return render_template('statistics.html')
+
+@app.route('/save_exercise', methods=['POST'])
+def save_exercise():
+    """保存運動數據到歷史記錄"""
+    if 'user_id' not in session:
+        return jsonify({'success': False, 'message': '請先登入'}), 401
+
+    data = request.get_json()
+
+    try:
+        conn = sqlite3.connect('data/users.db')
+        c = conn.cursor()
+        c.execute('''
+            INSERT INTO exercise_history
+            (user_id, exercise_type, duration, weight, height, age, gender,
+             heart_rate, temperature, calories, met, heart_rate_zone, efficiency_score)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (
+            session['user_id'],
+            data.get('exercise_type'),
+            data.get('duration'),
+            data.get('weight'),
+            data.get('height'),
+            data.get('age'),
+            data.get('gender'),
+            data.get('heart_rate'),
+            data.get('temperature'),
+            data.get('calories'),
+            data.get('met'),
+            data.get('heart_rate_zone'),
+            data.get('efficiency_score')
+        ))
+        conn.commit()
+        conn.close()
+
+        return jsonify({'success': True, 'message': '數據已保存到歷史記錄'})
+    except Exception as e:
+        return jsonify({'success': False, 'message': f'保存失敗: {str(e)}'}), 500
+
+@app.route('/history')
+def history():
+    """查看歷史記錄頁面"""
+    if 'user_id' not in session:
+        flash('請先登入', 'error')
+        return redirect(url_for('login'))
+
+    conn = sqlite3.connect('data/users.db')
+    conn.row_factory = sqlite3.Row
+    c = conn.cursor()
+    c.execute('''
+        SELECT * FROM exercise_history
+        WHERE user_id = ?
+        ORDER BY created_at DESC
+    ''', (session['user_id'],))
+    records = c.fetchall()
+    conn.close()
+
+    # 轉換為字典列表
+    history_data = []
+    for record in records:
+        history_data.append({
+            'id': record['id'],
+            'exercise_type': record['exercise_type'],
+            'duration': record['duration'],
+            'weight': record['weight'],
+            'height': record['height'],
+            'age': record['age'],
+            'gender': record['gender'],
+            'heart_rate': record['heart_rate'],
+            'temperature': record['temperature'],
+            'calories': record['calories'],
+            'met': record['met'],
+            'heart_rate_zone': record['heart_rate_zone'],
+            'efficiency_score': record['efficiency_score'],
+            'created_at': record['created_at']
+        })
+
+    return render_template('history.html', history=history_data)
+
+@app.route('/delete_history/<int:record_id>', methods=['POST'])
+def delete_history(record_id):
+    """刪除歷史記錄"""
+    if 'user_id' not in session:
+        return jsonify({'success': False, 'message': '請先登入'}), 401
+
+    try:
+        conn = sqlite3.connect('data/users.db')
+        c = conn.cursor()
+        c.execute('DELETE FROM exercise_history WHERE id = ? AND user_id = ?',
+                 (record_id, session['user_id']))
+        conn.commit()
+        conn.close()
+
+        return jsonify({'success': True, 'message': '記錄已刪除'})
+    except Exception as e:
+        return jsonify({'success': False, 'message': f'刪除失敗: {str(e)}'}), 500
 
 # API 路由
 @app.route('/api/players')
@@ -378,4 +598,6 @@ def internal_error(error):
     return render_template('index.html'), 500
 
 if __name__ == '__main__':
+    # 初始化資料庫
+    init_db()
     app.run(debug=True, host='0.0.0.0', port=5000)

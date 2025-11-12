@@ -64,7 +64,21 @@
                 <h1 class="text-2xl font-bold">
                     <i class="fas fa-heartbeat mr-2"></i>運動數據分析
                 </h1>
-                <div class="w-24"></div>
+                <div class="flex items-center space-x-4">
+                    {% if session.username %}
+                        <a href="/history" class="hover:text-yellow-300 transition">
+                            <i class="fas fa-history mr-1"></i>歷史記錄
+                        </a>
+                        <span class="text-yellow-300">{{ session.username }}</span>
+                        <a href="/logout" class="hover:text-red-300 transition">
+                            <i class="fas fa-sign-out-alt"></i>
+                        </a>
+                    {% else %}
+                        <a href="/login" class="hover:text-yellow-300 transition">
+                            <i class="fas fa-sign-in-alt mr-1"></i>登入
+                        </a>
+                    {% endif %}
+                </div>
             </div>
         </div>
     </nav>
@@ -231,6 +245,18 @@
                 </div>
             </div>
 
+        </div>
+
+        <!-- 保存到歷史記錄按鈕 -->
+        <div id="saveSection" class="mt-8 mb-10 text-center" style="display: none;">
+            <button onclick="saveToHistory()"
+                    class="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-bold py-4 px-8 rounded-xl transition transform hover:scale-105 shadow-xl">
+                <i class="fas fa-save mr-2"></i>保存此次分析到歷史記錄
+            </button>
+            <a href="{{ url_for('history') }}"
+               class="ml-4 bg-gray-700 hover:bg-gray-600 text-white font-bold py-4 px-8 rounded-xl transition inline-block">
+                <i class="fas fa-history mr-2"></i>查看歷史記錄
+            </a>
         </div>
 
         <!-- 詳細分析區域 -->
@@ -454,6 +480,22 @@
             // 6. 生成建議
             generateRecommendations(data, caloriesBurned, hrPercent, tempStatus);
 
+            // 7. 保存當前分析數據以便稍後存儲
+            currentAnalysisData = {
+                exercise_type: data.exerciseType,
+                duration: data.duration,
+                weight: data.weight,
+                height: data.height,
+                age: data.age,
+                gender: data.gender,
+                heart_rate: data.heartRate,
+                temperature: data.temperature,
+                calories: caloriesBurned,
+                met: adjustedMET,
+                heart_rate_zone: hrZone,
+                efficiency_score: efficiencyScore
+            };
+
             // 顯示結果區域
             document.getElementById('analysisResults').classList.add('show');
 
@@ -533,6 +575,50 @@
                     <p class="text-sm">${rec.text}</p>
                 </div>
             `).join('');
+
+            // 顯示保存按鈕
+            document.getElementById('saveSection').style.display = 'block';
+        }
+
+        // 保存當前數據變量
+        let currentAnalysisData = null;
+
+        // 保存分析結果到歷史記錄
+        async function saveToHistory() {
+            if (!currentAnalysisData) {
+                alert('沒有可保存的數據');
+                return;
+            }
+
+            {% if not session.username %}
+            if (confirm('需要登入才能保存數據,是否前往登入頁面?')) {
+                window.location.href = '{{ url_for("login") }}';
+            }
+            return;
+            {% endif %}
+
+            try {
+                const response = await fetch('/save_exercise', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(currentAnalysisData)
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    alert('✅ ' + result.message);
+                    if (confirm('是否前往查看歷史記錄?')) {
+                        window.location.href = '{{ url_for("history") }}';
+                    }
+                } else {
+                    alert('❌ ' + result.message);
+                }
+            } catch (error) {
+                alert('保存失敗: ' + error.message);
+            }
         }
     </script>
 </body>

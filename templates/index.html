@@ -89,11 +89,28 @@
                     <i class="fas fa-basketball-ball text-3xl"></i>
                     <h1 class="text-2xl font-bold">籃球分析系統</h1>
                 </div>
-                <div class="hidden md:flex space-x-6">
+                <div class="hidden md:flex space-x-6 items-center">
                     <a href="/" class="hover:text-yellow-300 transition">首頁</a>
                     <a href="#players" class="hover:text-yellow-300 transition">球員分析</a>
                     <a href="#scores" class="hover:text-yellow-300 transition">賽事比分</a>
                     <a href="#stats" class="hover:text-yellow-300 transition">數據分析</a>
+                    {% if session.username %}
+                        <a href="/history" class="hover:text-yellow-300 transition">
+                            <i class="fas fa-history mr-1"></i>歷史記錄
+                        </a>
+                        <span class="text-gray-300">|</span>
+                        <span class="text-yellow-300">{{ session.username }}</span>
+                        <a href="/logout" class="hover:text-red-300 transition">
+                            <i class="fas fa-sign-out-alt mr-1"></i>登出
+                        </a>
+                    {% else %}
+                        <a href="/login" class="hover:text-yellow-300 transition">
+                            <i class="fas fa-sign-in-alt mr-1"></i>登入
+                        </a>
+                        <a href="/register" class="bg-yellow-500 hover:bg-yellow-600 text-gray-900 px-4 py-2 rounded-lg transition font-semibold">
+                            註冊
+                        </a>
+                    {% endif %}
                 </div>
                 <button class="md:hidden">
                     <i class="fas fa-bars text-2xl"></i>
