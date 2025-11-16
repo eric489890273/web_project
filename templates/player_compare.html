@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>球員比較 - 籃球分析系統</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .gradient-bg { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+        .card-hover {
+            transition: all 0.3s ease;
+        }
+        .card-hover:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.3);
+        }
+        .player-card {
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+            border: 2px solid rgba(102, 126, 234, 0.3);
+        }
+        .vs-badge {
+            background: linear-gradient(135deg, #f59e0b 0%, #ef4444 100%);
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.8; }
+        }
+        .stat-bar {
+            transition: width 0.5s ease-out;
+        }
+        /* 搜尋下拉選單樣式 */
+        .search-dropdown {
+            position: relative;
+        }
+        .search-input {
+            background: #374151;
+            border: 2px solid #4b5563;
+            transition: all 0.3s ease;
+        }
+        .search-input:focus {
+            border-color: #8b5cf6;
+            outline: none;
+        }
+        .dropdown-list {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            max-height: 300px;
+            overflow-y: auto;
+            background: #374151;
+            border: 2px solid #4b5563;
+            border-radius: 0.5rem;
+            margin-top: 0.25rem;
+            z-index: 50;
+            display: none;
+        }
+        .dropdown-list.show {
+            display: block;
+        }
+        .dropdown-item {
+            padding: 0.75rem 1rem;
+            cursor: pointer;
+            transition: background 0.2s ease;
+            border-bottom: 1px solid #4b5563;
+        }
+        .dropdown-item:hover {
+            background: #4b5563;
+        }
+        .dropdown-item.selected {
+            background: #8b5cf6;
+        }
+        .dropdown-list::-webkit-scrollbar {
+            width: 8px;
+        }
+        .dropdown-list::-webkit-scrollbar-track {
+            background: #1f2937;
+        }
+        .dropdown-list::-webkit-scrollbar-thumb {
+            background: #4b5563;
+            border-radius: 4px;
+        }
+        .dropdown-list::-webkit-scrollbar-thumb:hover {
+            background: #6b7280;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white">
+    <!-- 導航欄 -->
+    <nav class="gradient-bg shadow-lg sticky top-0 z-50">
+        <div class="container mx-auto px-6 py-4">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-4">
+                    <a href="/player_analysis" class="bg-white/10 hover:bg-white/20 px-4 py-2 rounded-lg transition flex items-center space-x-2 backdrop-blur-sm border border-white/20">
+                        <i class="fas fa-arrow-left"></i>
+                        <span>返回球員分析</span>
+                    </a>
+                </div>
+                <h1 class="text-2xl font-bold">
+                    <i class="fas fa-random mr-2"></i>球員比較
+                </h1>
+                <div class="w-32"></div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- 球員選擇區 -->
+    <section class="container mx-auto px-6 py-8">
+        <div class="bg-gray-800 rounded-xl p-6 shadow-xl mb-8">
+            <h2 class="text-2xl font-bold mb-6 flex items-center">
+                <i class="fas fa-users text-purple-400 mr-3"></i>
+                選擇要比較的球員
+            </h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- 球員 1 選擇 -->
+                <div class="search-dropdown">
+                    <label class="block text-sm font-semibold mb-2 text-purple-300">
+                        <i class="fas fa-user mr-2"></i>球員 1
+                    </label>
+                    <input type="text"
+                           id="player1Search"
+                           class="search-input w-full text-white px-4 py-3 rounded-lg"
+                           placeholder="輸入球員名稱搜尋..."
+                           autocomplete="off"
+                           onfocus="showDropdown('player1')"
+                           oninput="filterPlayers('player1')">
+                    <div id="player1Dropdown" class="dropdown-list">
+                        {% for player in players %}
+                        <div class="dropdown-item text-white" onclick="selectPlayer('player1', '{{ player.id }}', '{{ player.name }}', '{{ player.team }}')">
+                            {{ player.name }} <span class="text-gray-400">({{ player.team }})</span>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    <input type="hidden" id="player1Select" value="">
+                </div>
+
+                <!-- 球員 2 選擇 -->
+                <div class="search-dropdown">
+                    <label class="block text-sm font-semibold mb-2 text-yellow-300">
+                        <i class="fas fa-user mr-2"></i>球員 2
+                    </label>
+                    <input type="text"
+                           id="player2Search"
+                           class="search-input w-full text-white px-4 py-3 rounded-lg"
+                           placeholder="輸入球員名稱搜尋..."
+                           autocomplete="off"
+                           onfocus="showDropdown('player2')"
+                           oninput="filterPlayers('player2')">
+                    <div id="player2Dropdown" class="dropdown-list">
+                        {% for player in players %}
+                        <div class="dropdown-item text-white" onclick="selectPlayer('player2', '{{ player.id }}', '{{ player.name }}', '{{ player.team }}')">
+                            {{ player.name }} <span class="text-gray-400">({{ player.team }})</span>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    <input type="hidden" id="player2Select" value="">
+                </div>
+            </div>
+        </div>
+
+        <!-- 比較結果區域 -->
+        <div id="comparisonResults" style="display: none;">
+            <!-- 球員基本資訊卡片 -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                <!-- 球員 1 卡片 -->
+                <div class="player-card rounded-xl p-6 shadow-xl">
+                    <div class="flex items-center space-x-4 mb-4">
+                        <div class="w-20 h-20 bg-purple-600 rounded-full flex items-center justify-center text-3xl font-bold">
+                            1
+                        </div>
+                        <div>
+                            <h3 class="text-2xl font-bold" id="player1Name">-</h3>
+                            <p class="text-gray-400" id="player1Team">-</p>
+                            <p class="text-sm text-gray-500" id="player1Age">-</p>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="bg-gray-700/50 rounded-lg p-3 text-center">
+                            <p class="text-sm text-gray-400">場均得分</p>
+                            <p class="text-2xl font-bold text-yellow-400" id="player1PPG">-</p>
+                        </div>
+                        <div class="bg-gray-700/50 rounded-lg p-3 text-center">
+                            <p class="text-sm text-gray-400">場均助攻</p>
+                            <p class="text-2xl font-bold text-green-400" id="player1APG">-</p>
+                        </div>
+                        <div class="bg-gray-700/50 rounded-lg p-3 text-center">
+                            <p class="text-sm text-gray-400">場均籃板</p>
+                            <p class="text-2xl font-bold text-blue-400" id="player1RPG">-</p>
+                        </div>
+                        <div class="bg-gray-700/50 rounded-lg p-3 text-center">
+                            <p class="text-sm text-gray-400">投籃命中率</p>
+                            <p class="text-2xl font-bold text-purple-400" id="player1FG">-</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- VS 標誌 -->
+                <div class="hidden md:flex absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10">
+                    <div class="vs-badge w-20 h-20 rounded-full flex items-center justify-center text-3xl font-bold shadow-2xl">
+                        VS
+                    </div>
+                </div>
+
+                <!-- 球員 2 卡片 -->
+                <div class="player-card rounded-xl p-6 shadow-xl">
+                    <div class="flex items-center space-x-4 mb-4">
+                        <div class="w-20 h-20 bg-yellow-600 rounded-full flex items-center justify-center text-3xl font-bold">
+                            2
+                        </div>
+                        <div>
+                            <h3 class="text-2xl font-bold" id="player2Name">-</h3>
+                            <p class="text-gray-400" id="player2Team">-</p>
+                            <p class="text-sm text-gray-500" id="player2Age">-</p>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="bg-gray-700/50 rounded-lg p-3 text-center">
+                            <p class="text-sm text-gray-400">場均得分</p>
+                            <p class="text-2xl font-bold text-yellow-400" id="player2PPG">-</p>
+                        </div>
+                        <div class="bg-gray-700/50 rounded-lg p-3 text-center">
+                            <p class="text-sm text-gray-400">場均助攻</p>
+                            <p class="text-2xl font-bold text-green-400" id="player2APG">-</p>
+                        </div>
+                        <div class="bg-gray-700/50 rounded-lg p-3 text-center">
+                            <p class="text-sm text-gray-400">場均籃板</p>
+                            <p class="text-2xl font-bold text-blue-400" id="player2RPG">-</p>
+                        </div>
+                        <div class="bg-gray-700/50 rounded-lg p-3 text-center">
+                            <p class="text-sm text-gray-400">投籃命中率</p>
+                            <p class="text-2xl font-bold text-purple-400" id="player2FG">-</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 詳細數據對比 -->
+            <div class="bg-gray-800 rounded-xl p-6 shadow-xl mb-8">
+                <h2 class="text-2xl font-bold mb-6 flex items-center">
+                    <i class="fas fa-chart-bar text-orange-400 mr-3"></i>
+                    數據對比
+                </h2>
+
+                <div class="space-y-6">
+                    <!-- 得分對比 -->
+                    <div>
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="text-purple-300 font-semibold" id="player1PPGBar">0</span>
+                            <span class="text-gray-400">場均得分 (PPG)</span>
+                            <span class="text-yellow-300 font-semibold" id="player2PPGBar">0</span>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <div class="flex-1 bg-gray-700 h-8 rounded-lg overflow-hidden flex">
+                                <div id="player1PPGBarWidth" class="stat-bar bg-gradient-to-r from-purple-500 to-purple-600 h-full flex items-center justify-end pr-2" style="width: 0%">
+                                    <span class="text-xs font-bold"></span>
+                                </div>
+                            </div>
+                            <div class="flex-1 bg-gray-700 h-8 rounded-lg overflow-hidden flex">
+                                <div id="player2PPGBarWidth" class="stat-bar bg-gradient-to-r from-yellow-500 to-yellow-600 h-full flex items-center justify-start pl-2" style="width: 0%">
+                                    <span class="text-xs font-bold"></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 助攻對比 -->
+                    <div>
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="text-purple-300 font-semibold" id="player1APGBar">0</span>
+                            <span class="text-gray-400">場均助攻 (APG)</span>
+                            <span class="text-yellow-300 font-semibold" id="player2APGBar">0</span>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <div class="flex-1 bg-gray-700 h-8 rounded-lg overflow-hidden flex">
+                                <div id="player1APGBarWidth" class="stat-bar bg-gradient-to-r from-purple-500 to-purple-600 h-full" style="width: 0%"></div>
+                            </div>
+                            <div class="flex-1 bg-gray-700 h-8 rounded-lg overflow-hidden flex">
+                                <div id="player2APGBarWidth" class="stat-bar bg-gradient-to-r from-yellow-500 to-yellow-600 h-full" style="width: 0%"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 籃板對比 -->
+                    <div>
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="text-purple-300 font-semibold" id="player1RPGBar">0</span>
+                            <span class="text-gray-400">場均籃板 (RPG)</span>
+                            <span class="text-yellow-300 font-semibold" id="player2RPGBar">0</span>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <div class="flex-1 bg-gray-700 h-8 rounded-lg overflow-hidden flex">
+                                <div id="player1RPGBarWidth" class="stat-bar bg-gradient-to-r from-purple-500 to-purple-600 h-full" style="width: 0%"></div>
+                            </div>
+                            <div class="flex-1 bg-gray-700 h-8 rounded-lg overflow-hidden flex">
+                                <div id="player2RPGBarWidth" class="stat-bar bg-gradient-to-r from-yellow-500 to-yellow-600 h-full" style="width: 0%"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 投籃命中率對比 -->
+                    <div>
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="text-purple-300 font-semibold" id="player1FGBar">0%</span>
+                            <span class="text-gray-400">投籃命中率 (FG%)</span>
+                            <span class="text-yellow-300 font-semibold" id="player2FGBar">0%</span>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <div class="flex-1 bg-gray-700 h-8 rounded-lg overflow-hidden flex">
+                                <div id="player1FGBarWidth" class="stat-bar bg-gradient-to-r from-purple-500 to-purple-600 h-full" style="width: 0%"></div>
+                            </div>
+                            <div class="flex-1 bg-gray-700 h-8 rounded-lg overflow-hidden flex">
+                                <div id="player2FGBarWidth" class="stat-bar bg-gradient-to-r from-yellow-500 to-yellow-600 h-full" style="width: 0%"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 三分命中率對比 -->
+                    <div>
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="text-purple-300 font-semibold" id="player13PBar">0%</span>
+                            <span class="text-gray-400">三分命中率 (3P%)</span>
+                            <span class="text-yellow-300 font-semibold" id="player23PBar">0%</span>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <div class="flex-1 bg-gray-700 h-8 rounded-lg overflow-hidden flex">
+                                <div id="player13PBarWidth" class="stat-bar bg-gradient-to-r from-purple-500 to-purple-600 h-full" style="width: 0%"></div>
+                            </div>
+                            <div class="flex-1 bg-gray-700 h-8 rounded-lg overflow-hidden flex">
+                                <div id="player23PBarWidth" class="stat-bar bg-gradient-to-r from-yellow-500 to-yellow-600 h-full" style="width: 0%"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 抄截對比 -->
+                    <div>
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="text-purple-300 font-semibold" id="player1STLBar">0</span>
+                            <span class="text-gray-400">場均抄截 (STL)</span>
+                            <span class="text-yellow-300 font-semibold" id="player2STLBar">0</span>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <div class="flex-1 bg-gray-700 h-8 rounded-lg overflow-hidden flex">
+                                <div id="player1STLBarWidth" class="stat-bar bg-gradient-to-r from-purple-500 to-purple-600 h-full" style="width: 0%"></div>
+                            </div>
+                            <div class="flex-1 bg-gray-700 h-8 rounded-lg overflow-hidden flex">
+                                <div id="player2STLBarWidth" class="stat-bar bg-gradient-to-r from-yellow-500 to-yellow-600 h-full" style="width: 0%"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 阻攻對比 -->
+                    <div>
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="text-purple-300 font-semibold" id="player1BLKBar">0</span>
+                            <span class="text-gray-400">場均阻攻 (BLK)</span>
+                            <span class="text-yellow-300 font-semibold" id="player2BLKBar">0</span>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <div class="flex-1 bg-gray-700 h-8 rounded-lg overflow-hidden flex">
+                                <div id="player1BLKBarWidth" class="stat-bar bg-gradient-to-r from-purple-500 to-purple-600 h-full" style="width: 0%"></div>
+                            </div>
+                            <div class="flex-1 bg-gray-700 h-8 rounded-lg overflow-hidden flex">
+                                <div id="player2BLKBarWidth" class="stat-bar bg-gradient-to-r from-yellow-500 to-yellow-600 h-full" style="width: 0%"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 雷達圖對比 -->
+            <div class="bg-gray-800 rounded-xl p-6 shadow-xl">
+                <h2 class="text-2xl font-bold mb-6 flex items-center">
+                    <i class="fas fa-chart-area text-green-400 mr-3"></i>
+                    能力雷達圖
+                </h2>
+                <div class="flex justify-center">
+                    <div style="position: relative; height: 400px; width: 100%; max-width: 600px;">
+                        <canvas id="radarChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <script>
+        const playersData = {{ players | tojson }};
+        let player1Data = null;
+        let player2Data = null;
+        let radarChart = null;
+
+        // 點擊頁面其他地方關閉下拉選單
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('.search-dropdown')) {
+                document.getElementById('player1Dropdown').classList.remove('show');
+                document.getElementById('player2Dropdown').classList.remove('show');
+            }
+        });
+
+        // 顯示下拉選單
+        function showDropdown(playerNum) {
+            const dropdown = document.getElementById(`${playerNum}Dropdown`);
+            dropdown.classList.add('show');
+            // 顯示所有選項
+            const items = dropdown.querySelectorAll('.dropdown-item');
+            items.forEach(item => item.style.display = 'block');
+        }
+
+        // 過濾球員列表
+        function filterPlayers(playerNum) {
+            const searchInput = document.getElementById(`${playerNum}Search`);
+            const dropdown = document.getElementById(`${playerNum}Dropdown`);
+            const filter = searchInput.value.toLowerCase();
+            const items = dropdown.querySelectorAll('.dropdown-item');
+
+            dropdown.classList.add('show');
+
+            items.forEach(item => {
+                const text = item.textContent.toLowerCase();
+                if (text.includes(filter)) {
+                    item.style.display = 'block';
+                } else {
+                    item.style.display = 'none';
+                }
+            });
+        }
+
+        // 選擇球員
+        function selectPlayer(playerNum, playerId, playerName, playerTeam) {
+            document.getElementById(`${playerNum}Search`).value = `${playerName} (${playerTeam})`;
+            document.getElementById(`${playerNum}Select`).value = playerId;
+            document.getElementById(`${playerNum}Dropdown`).classList.remove('show');
+
+            // 更新比較
+            updateComparison();
+        }
+
+        function updateComparison() {
+            const player1Id = document.getElementById('player1Select').value;
+            const player2Id = document.getElementById('player2Select').value;
+
+            if (!player1Id || !player2Id) {
+                document.getElementById('comparisonResults').style.display = 'none';
+                return;
+            }
+
+            player1Data = playersData.find(p => p.id == player1Id);
+            player2Data = playersData.find(p => p.id == player2Id);
+
+            if (!player1Data || !player2Data) return;
+
+            // 顯示比較結果
+            document.getElementById('comparisonResults').style.display = 'block';
+
+            // 更新球員 1 資訊
+            document.getElementById('player1Name').textContent = player1Data.name;
+            document.getElementById('player1Team').textContent = player1Data.team;
+            document.getElementById('player1Age').textContent = `年齡: ${player1Data.age} | 出賽: ${player1Data.gp} 場`;
+            document.getElementById('player1PPG').textContent = player1Data.ppg;
+            document.getElementById('player1APG').textContent = player1Data.apg;
+            document.getElementById('player1RPG').textContent = player1Data.rpg;
+            document.getElementById('player1FG').textContent = player1Data.fg_pct + '%';
+
+            // 更新球員 2 資訊
+            document.getElementById('player2Name').textContent = player2Data.name;
+            document.getElementById('player2Team').textContent = player2Data.team;
+            document.getElementById('player2Age').textContent = `年齡: ${player2Data.age} | 出賽: ${player2Data.gp} 場`;
+            document.getElementById('player2PPG').textContent = player2Data.ppg;
+            document.getElementById('player2APG').textContent = player2Data.apg;
+            document.getElementById('player2RPG').textContent = player2Data.rpg;
+            document.getElementById('player2FG').textContent = player2Data.fg_pct + '%';
+
+            // 更新數據對比條
+            updateStatBar('PPG', player1Data.ppg, player2Data.ppg, 40);
+            updateStatBar('APG', player1Data.apg, player2Data.apg, 12);
+            updateStatBar('RPG', player1Data.rpg, player2Data.rpg, 15);
+            updateStatBar('FG', player1Data.fg_pct, player2Data.fg_pct, 100);
+            updateStatBar('3P', player1Data.three_pct, player2Data.three_pct, 100);
+            updateStatBar('STL', player1Data.stl, player2Data.stl, 3);
+            updateStatBar('BLK', player1Data.blk, player2Data.blk, 3);
+
+            // 更新雷達圖
+            updateRadarChart();
+
+            // 滾動到結果
+            document.getElementById('comparisonResults').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
+        function updateStatBar(stat, value1, value2, maxValue) {
+            const percent1 = (value1 / maxValue) * 100;
+            const percent2 = (value2 / maxValue) * 100;
+
+            document.getElementById(`player1${stat}Bar`).textContent = stat.includes('%') ? value1 + '%' : value1;
+            document.getElementById(`player2${stat}Bar`).textContent = stat.includes('%') ? value2 + '%' : value2;
+
+            document.getElementById(`player1${stat}BarWidth`).style.width = Math.min(percent1, 100) + '%';
+            document.getElementById(`player2${stat}BarWidth`).style.width = Math.min(percent2, 100) + '%';
+        }
+
+        function updateRadarChart() {
+            const ctx = document.getElementById('radarChart').getContext('2d');
+
+            // 計算雷達圖數據 (歸一化到 0-100)
+            const maxStats = {
+                ppg: 35,
+                apg: 12,
+                rpg: 15,
+                stl: 2.5,
+                blk: 3
+            };
+
+            const player1Radar = [
+                Math.min((player1Data.ppg / maxStats.ppg) * 100, 100),
+                Math.min((player1Data.apg / maxStats.apg) * 100, 100),
+                Math.min((player1Data.rpg / maxStats.rpg) * 100, 100),
+                Math.min((player1Data.stl / maxStats.stl) * 100, 100),
+                Math.min((player1Data.blk / maxStats.blk) * 100, 100)
+            ];
+
+            const player2Radar = [
+                Math.min((player2Data.ppg / maxStats.ppg) * 100, 100),
+                Math.min((player2Data.apg / maxStats.apg) * 100, 100),
+                Math.min((player2Data.rpg / maxStats.rpg) * 100, 100),
+                Math.min((player2Data.stl / maxStats.stl) * 100, 100),
+                Math.min((player2Data.blk / maxStats.blk) * 100, 100)
+            ];
+
+            // 銷毀舊圖表
+            if (radarChart) {
+                radarChart.destroy();
+            }
+
+            // 創建新圖表
+            radarChart = new Chart(ctx, {
+                type: 'radar',
+                data: {
+                    labels: ['得分', '助攻', '籃板', '抄截', '阻攻'],
+                    datasets: [{
+                        label: player1Data.name,
+                        data: player1Radar,
+                        fill: true,
+                        backgroundColor: 'rgba(139, 92, 246, 0.2)',
+                        borderColor: 'rgb(139, 92, 246)',
+                        pointBackgroundColor: 'rgb(139, 92, 246)',
+                        pointBorderColor: '#fff',
+                        pointHoverBackgroundColor: '#fff',
+                        pointHoverBorderColor: 'rgb(139, 92, 246)'
+                    }, {
+                        label: player2Data.name,
+                        data: player2Radar,
+                        fill: true,
+                        backgroundColor: 'rgba(234, 179, 8, 0.2)',
+                        borderColor: 'rgb(234, 179, 8)',
+                        pointBackgroundColor: 'rgb(234, 179, 8)',
+                        pointBorderColor: '#fff',
+                        pointHoverBackgroundColor: '#fff',
+                        pointHoverBorderColor: 'rgb(234, 179, 8)'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    scales: {
+                        r: {
+                            angleLines: {
+                                color: 'rgba(255, 255, 255, 0.1)'
+                            },
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.1)'
+                            },
+                            pointLabels: {
+                                color: '#fff',
+                                font: {
+                                    size: 14,
+                                    weight: 'bold'
+                                }
+                            },
+                            ticks: {
+                                color: '#9ca3af',
+                                backdropColor: 'transparent'
+                            },
+                            suggestedMin: 0,
+                            suggestedMax: 100
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            labels: {
+                                color: '#fff',
+                                font: {
+                                    size: 14
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+    </script>
+</body>
+</html>

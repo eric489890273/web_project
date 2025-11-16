@@ -91,13 +91,10 @@
                 </div>
                 <div class="hidden md:flex space-x-6 items-center">
                     <a href="/" class="hover:text-yellow-300 transition">首頁</a>
-                    <a href="#players" class="hover:text-yellow-300 transition">球員分析</a>
-                    <a href="#scores" class="hover:text-yellow-300 transition">賽事比分</a>
-                    <a href="#stats" class="hover:text-yellow-300 transition">數據分析</a>
+                    <a href="/player_analysis" class="hover:text-yellow-300 transition">球員分析</a>
+                    <a href="/live_scores" class="hover:text-yellow-300 transition">賽事比分</a>
+                    <a href="/statistics" class="hover:text-yellow-300 transition">數據分析</a>
                     {% if session.username %}
-                        <a href="/history" class="hover:text-yellow-300 transition">
-                            <i class="fas fa-history mr-1"></i>歷史記錄
-                        </a>
                         <span class="text-gray-300">|</span>
                         <span class="text-yellow-300">{{ session.username }}</span>
                         <a href="/logout" class="hover:text-red-300 transition">

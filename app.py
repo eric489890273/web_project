@@ -49,6 +49,35 @@ def init_db():
         )
     ''')
 
+    # 籃球數據歷史記錄表
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS basketball_history (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            play_time INTEGER NOT NULL,
+            fga INTEGER,
+            fgm INTEGER,
+            fg_pct REAL,
+            three_pa INTEGER,
+            three_pm INTEGER,
+            three_pct REAL,
+            fta INTEGER,
+            ftm INTEGER,
+            ft_pct REAL,
+            rebounds INTEGER,
+            assists INTEGER,
+            steals INTEGER,
+            blocks INTEGER,
+            turnovers INTEGER,
+            points INTEGER,
+            true_shooting_pct REAL,
+            assist_ratio REAL,
+            turnover_ratio REAL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users (id)
+        )
+    ''')
+
     conn.commit()
     conn.close()
 
@@ -345,6 +374,11 @@ def player_analysis():
     """球員分析頁面"""
     return render_template('player_analysis.html', players=PLAYERS_DATA, teams=TEAMS_LIST)
 
+@app.route('/player_compare')
+def player_compare():
+    """球員比較頁面"""
+    return render_template('player_compare.html', players=PLAYERS_DATA, teams=TEAMS_LIST)
+
 @app.route('/player/<player_id>')
 def player_detail(player_id):
     """球員詳細分析頁面"""
@@ -386,6 +420,11 @@ def statistics():
     """數據分析頁面"""
     return render_template('statistics.html')
 
+@app.route('/basketball_stats')
+def basketball_stats():
+    """籃球數據分析頁面"""
+    return render_template('basketball_stats.html')
+
 @app.route('/save_exercise', methods=['POST'])
 def save_exercise():
     """保存運動數據到歷史記錄"""
@@ -421,6 +460,52 @@ def save_exercise():
         conn.close()
 
         return jsonify({'success': True, 'message': '數據已保存到歷史記錄'})
+    except Exception as e:
+        return jsonify({'success': False, 'message': f'保存失敗: {str(e)}'}), 500
+
+@app.route('/save_basketball', methods=['POST'])
+def save_basketball():
+    """保存籃球數據到歷史記錄"""
+    if 'user_id' not in session:
+        return jsonify({'success': False, 'message': '請先登入'}), 401
+
+    data = request.get_json()
+
+    try:
+        conn = sqlite3.connect('data/users.db')
+        c = conn.cursor()
+        c.execute('''
+            INSERT INTO basketball_history
+            (user_id, play_time, fga, fgm, fg_pct, three_pa, three_pm, three_pct,
+             fta, ftm, ft_pct, rebounds, assists, steals, blocks, turnovers, points,
+             true_shooting_pct, assist_ratio, turnover_ratio)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (
+            session['user_id'],
+            data.get('play_time'),
+            data.get('fga'),
+            data.get('fgm'),
+            data.get('fg_pct'),
+            data.get('three_pa'),
+            data.get('three_pm'),
+            data.get('three_pct'),
+            data.get('fta'),
+            data.get('ftm'),
+            data.get('ft_pct'),
+            data.get('rebounds'),
+            data.get('assists'),
+            data.get('steals'),
+            data.get('blocks'),
+            data.get('turnovers'),
+            data.get('points'),
+            data.get('true_shooting_pct'),
+            data.get('assist_ratio'),
+            data.get('turnover_ratio')
+        ))
+        conn.commit()
+        conn.close()
+
+        return jsonify({'success': True, 'message': '籃球數據已保存到歷史記錄'})
     except Exception as e:
         return jsonify({'success': False, 'message': f'保存失敗: {str(e)}'}), 500
 
@@ -464,6 +549,67 @@ def history():
 
     return render_template('history.html', history=history_data)
 
+@app.route('/basketball_history')
+def basketball_history():
+    """查看籃球數據歷史記錄頁面"""
+    if 'user_id' not in session:
+        flash('請先登入', 'error')
+        return redirect(url_for('login'))
+
+    conn = sqlite3.connect('data/users.db')
+    conn.row_factory = sqlite3.Row
+    c = conn.cursor()
+    c.execute('''
+        SELECT * FROM basketball_history
+        WHERE user_id = ?
+        ORDER BY created_at DESC
+    ''', (session['user_id'],))
+    records = c.fetchall()
+    conn.close()
+
+    # 轉換為字典列表並計算 PER
+    history_data = []
+    total_games = len(records)
+
+    for record in records:
+        # 計算 PER: [(得分+助攻+籃板+抄截+阻攻)-(投籃出手數-投籃命中數)-(罰球出手數-罰球命中數)-失誤數]/總出場場次
+        per = 0
+        if total_games > 0:
+            per = (
+                (record['points'] + record['assists'] + record['rebounds'] +
+                 record['steals'] + record['blocks']) -
+                (record['fga'] - record['fgm']) -
+                (record['fta'] - record['ftm']) -
+                record['turnovers']
+            ) / total_games
+
+        history_data.append({
+            'id': record['id'],
+            'play_time': record['play_time'],
+            'fga': record['fga'],
+            'fgm': record['fgm'],
+            'fg_pct': record['fg_pct'],
+            'three_pa': record['three_pa'],
+            'three_pm': record['three_pm'],
+            'three_pct': record['three_pct'],
+            'fta': record['fta'],
+            'ftm': record['ftm'],
+            'ft_pct': record['ft_pct'],
+            'rebounds': record['rebounds'],
+            'assists': record['assists'],
+            'steals': record['steals'],
+            'blocks': record['blocks'],
+            'turnovers': record['turnovers'],
+            'points': record['points'],
+            'per': per,
+            'true_shooting_pct': record['true_shooting_pct'],
+            'assist_ratio': record['assist_ratio'],
+            'turnover_ratio': record['turnover_ratio'],
+            'created_at': record['created_at']
+        })
+
+    return render_template('basketball_history.html', history=history_data, total_games=total_games)
+
 @app.route('/delete_history/<int:record_id>', methods=['POST'])
 def delete_history(record_id):
     """刪除歷史記錄"""
@@ -474,6 +620,24 @@ def delete_history(record_id):
         conn = sqlite3.connect('data/users.db')
         c = conn.cursor()
         c.execute('DELETE FROM exercise_history WHERE id = ? AND user_id = ?',
+                 (record_id, session['user_id']))
+        conn.commit()
+        conn.close()
+
+        return jsonify({'success': True, 'message': '記錄已刪除'})
+    except Exception as e:
+        return jsonify({'success': False, 'message': f'刪除失敗: {str(e)}'}), 500
+
+@app.route('/delete_basketball_history/<int:record_id>', methods=['POST'])
+def delete_basketball_history(record_id):
+    """刪除籃球歷史記錄"""
+    if 'user_id' not in session:
+        return jsonify({'success': False, 'message': '請先登入'}), 401
+
+    try:
+        conn = sqlite3.connect('data/users.db')
+        c = conn.cursor()
+        c.execute('DELETE FROM basketball_history WHERE id = ? AND user_id = ?',
                  (record_id, session['user_id']))
         conn.commit()
         conn.close()

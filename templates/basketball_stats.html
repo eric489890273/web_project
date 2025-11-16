@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>籃球數據分析 - 個人運動追蹤系統</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .gradient-bg { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+        .card-hover {
+            transition: all 0.3s ease;
+        }
+        .card-hover:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.3);
+        }
+        @keyframes countUp {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .stat-card {
+            animation: countUp 0.6s ease-out forwards;
+        }
+        .input-field {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: all 0.3s ease;
+        }
+        .input-field:focus {
+            background: rgba(255, 255, 255, 0.15);
+            border-color: #667eea;
+            outline: none;
+        }
+        #analysisResults {
+            display: none;
+        }
+        #analysisResults.show {
+            display: block;
+            animation: countUp 0.6s ease-out forwards;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white">
+    <!-- 導航欄 -->
+    <nav class="gradient-bg shadow-lg sticky top-0 z-50">
+        <div class="container mx-auto px-6 py-4">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-4">
+                    <a href="/" class="bg-white/10 hover:bg-white/20 px-4 py-2 rounded-lg transition flex items-center space-x-2 backdrop-blur-sm border border-white/20">
+                        <i class="fas fa-arrow-left"></i>
+                        <span>返回首頁</span>
+                    </a>
+                </div>
+                <h1 class="text-2xl font-bold">
+                    <i class="fas fa-basketball-ball mr-2"></i>籃球數據分析
+                </h1>
+                <div class="flex items-center space-x-4">
+                    {% if session.username %}
+                        <a href="/basketball_history" class="hover:text-yellow-300 transition">
+                            <i class="fas fa-history mr-1"></i>歷史記錄
+                        </a>
+                        <span class="text-yellow-300">{{ session.username }}</span>
+                        <a href="/logout" class="hover:text-red-300 transition">
+                            <i class="fas fa-sign-out-alt"></i>
+                        </a>
+                    {% else %}
+                        <a href="/login" class="hover:text-yellow-300 transition">
+                            <i class="fas fa-sign-in-alt mr-1"></i>登入
+                        </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- 切換按鈕 -->
+    <section class="container mx-auto px-6 pt-8">
+        <div class="flex justify-center space-x-4 mb-4">
+            <a href="/statistics" class="bg-gray-700 hover:bg-gray-600 px-8 py-3 rounded-lg font-bold transition shadow-lg">
+                <i class="fas fa-heartbeat mr-2"></i>運動數據分析
+            </a>
+            <a href="/basketball_stats" class="bg-gradient-to-r from-orange-600 to-red-600 px-8 py-3 rounded-lg font-bold shadow-lg">
+                <i class="fas fa-basketball-ball mr-2"></i>籃球數據分析
+            </a>
+        </div>
+    </section>
+
+    <!-- 數據輸入表單 -->
+    <section class="container mx-auto px-6 py-8">
+        <div class="bg-gray-800 rounded-2xl shadow-2xl p-8 mb-8">
+            <h2 class="text-3xl font-bold mb-6 flex items-center">
+                <i class="fas fa-edit text-orange-400 mr-3"></i>
+                輸入籃球數據
+            </h2>
+
+            <form id="basketballForm" class="space-y-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+
+                    <!-- 比賽時間 -->
+                    <div>
+                        <label class="block text-sm font-semibold mb-2">
+                            <i class="fas fa-clock mr-2 text-blue-400"></i>比賽時間 (分鐘)
+                        </label>
+                        <input type="number" id="playTime" name="playTime" required min="1" max="48"
+                               class="w-full px-4 py-3 rounded-lg input-field text-white"
+                               placeholder="例如: 30">
+                    </div>
+
+                    <!-- 投籃命中 -->
+                    <div>
+                        <label class="block text-sm font-semibold mb-2">
+                            <i class="fas fa-bullseye mr-2 text-green-400"></i>投籃命中數
+                        </label>
+                        <input type="number" id="fgm" name="fgm" required min="0"
+                               class="w-full px-4 py-3 rounded-lg input-field text-white"
+                               placeholder="例如: 8">
+                    </div>
+
+                    <!-- 投籃出手 -->
+                    <div>
+                        <label class="block text-sm font-semibold mb-2">
+                            <i class="fas fa-basketball-ball mr-2 text-orange-400"></i>投籃出手數
+                        </label>
+                        <input type="number" id="fga" name="fga" required min="0"
+                               class="w-full px-4 py-3 rounded-lg input-field text-white"
+                               placeholder="例如: 15">
+                    </div>
+
+                    <!-- 三分命中 -->
+                    <div>
+                        <label class="block text-sm font-semibold mb-2">
+                            <i class="fas fa-bullseye mr-2 text-yellow-400"></i>三分命中數
+                        </label>
+                        <input type="number" id="threePm" name="threePm" required min="0"
+                               class="w-full px-4 py-3 rounded-lg input-field text-white"
+                               placeholder="例如: 3">
+                    </div>
+
+                    <!-- 三分出手 -->
+                    <div>
+                        <label class="block text-sm font-semibold mb-2">
+                            <i class="fas fa-dot-circle mr-2 text-yellow-400"></i>三分出手數
+                        </label>
+                        <input type="number" id="threePa" name="threePa" required min="0"
+                               class="w-full px-4 py-3 rounded-lg input-field text-white"
+                               placeholder="例如: 7">
+                    </div>
+
+                    <!-- 罰球命中 -->
+                    <div>
+                        <label class="block text-sm font-semibold mb-2">
+                            <i class="fas fa-check mr-2 text-blue-400"></i>罰球命中數
+                        </label>
+                        <input type="number" id="ftm" name="ftm" required min="0"
+                               class="w-full px-4 py-3 rounded-lg input-field text-white"
+                               placeholder="例如: 5">
+                    </div>
+
+                    <!-- 罰球出手 -->
+                    <div>
+                        <label class="block text-sm font-semibold mb-2">
+                            <i class="fas fa-hand-point-up mr-2 text-blue-400"></i>罰球出手數
+                        </label>
+                        <input type="number" id="fta" name="fta" required min="0"
+                               class="w-full px-4 py-3 rounded-lg input-field text-white"
+                               placeholder="例如: 6">
+                    </div>
+
+                    <!-- 籃板 -->
+                    <div>
+                        <label class="block text-sm font-semibold mb-2">
+                            <i class="fas fa-hand-rock mr-2 text-purple-400"></i>籃板數
+                        </label>
+                        <input type="number" id="rebounds" name="rebounds" required min="0"
+                               class="w-full px-4 py-3 rounded-lg input-field text-white"
+                               placeholder="例如: 7">
+                    </div>
+
+                    <!-- 助攻 -->
+                    <div>
+                        <label class="block text-sm font-semibold mb-2">
+                            <i class="fas fa-hands-helping mr-2 text-green-400"></i>助攻數
+                        </label>
+                        <input type="number" id="assists" name="assists" required min="0"
+                               class="w-full px-4 py-3 rounded-lg input-field text-white"
+                               placeholder="例如: 5">
+                    </div>
+
+                    <!-- 抄截 -->
+                    <div>
+                        <label class="block text-sm font-semibold mb-2">
+                            <i class="fas fa-shield-alt mr-2 text-red-400"></i>抄截數
+                        </label>
+                        <input type="number" id="steals" name="steals" required min="0"
+                               class="w-full px-4 py-3 rounded-lg input-field text-white"
+                               placeholder="例如: 2">
+                    </div>
+
+                    <!-- 阻攻 -->
+                    <div>
+                        <label class="block text-sm font-semibold mb-2">
+                            <i class="fas fa-hand-paper mr-2 text-indigo-400"></i>阻攻數
+                        </label>
+                        <input type="number" id="blocks" name="blocks" required min="0"
+                               class="w-full px-4 py-3 rounded-lg input-field text-white"
+                               placeholder="例如: 1">
+                    </div>
+
+                    <!-- 失誤 -->
+                    <div>
+                        <label class="block text-sm font-semibold mb-2">
+                            <i class="fas fa-exclamation-triangle mr-2 text-yellow-400"></i>失誤數
+                        </label>
+                        <input type="number" id="turnovers" name="turnovers" required min="0"
+                               class="w-full px-4 py-3 rounded-lg input-field text-white"
+                               placeholder="例如: 3">
+                    </div>
+
+                </div>
+
+                <button type="submit" class="w-full bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700 text-white font-bold py-4 px-6 rounded-xl transition transform hover:scale-105 shadow-xl">
+                    <i class="fas fa-chart-line mr-2"></i>開始分析
+                </button>
+            </form>
+        </div>
+    </section>
+
+    <!-- 分析結果 -->
+    <section id="analysisResults" class="container mx-auto px-6 pb-8">
+        <div class="bg-gray-800 rounded-2xl shadow-2xl p-8">
+            <h2 class="text-3xl font-bold mb-8 flex items-center">
+                <i class="fas fa-chart-bar text-orange-400 mr-3"></i>
+                分析結果
+            </h2>
+
+            <!-- 主要數據卡片 -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+                <!-- 總得分 -->
+                <div class="stat-card bg-gradient-to-br from-orange-600 to-red-600 rounded-xl p-6 shadow-xl">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm opacity-80 mb-1">總得分</p>
+                            <p class="text-4xl font-bold" id="totalPoints">0</p>
+                        </div>
+                        <i class="fas fa-basketball-ball text-5xl opacity-20"></i>
+                    </div>
+                </div>
+
+                <!-- 投籃命中率 -->
+                <div class="stat-card bg-gradient-to-br from-green-600 to-teal-600 rounded-xl p-6 shadow-xl">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm opacity-80 mb-1">投籃命中率</p>
+                            <p class="text-4xl font-bold" id="fgPercentage">0%</p>
+                        </div>
+                        <i class="fas fa-bullseye text-5xl opacity-20"></i>
+                    </div>
+                </div>
+
+                <!-- 三分命中率 -->
+                <div class="stat-card bg-gradient-to-br from-yellow-600 to-orange-600 rounded-xl p-6 shadow-xl">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm opacity-80 mb-1">三分命中率</p>
+                            <p class="text-4xl font-bold" id="threePercentage">0%</p>
+                        </div>
+                        <i class="fas fa-dot-circle text-5xl opacity-20"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 保存到歷史記錄按鈕 -->
+            <div id="saveSection" class="mt-8 mb-10 text-center" style="display: none;">
+                <button onclick="saveToHistory()"
+                        class="bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700 text-white font-bold py-4 px-8 rounded-xl transition transform hover:scale-105 shadow-xl">
+                    <i class="fas fa-save mr-2"></i>保存此次分析到歷史記錄
+                </button>
+                <a href="{{ url_for('basketball_history') }}"
+                   class="ml-4 bg-gray-700 hover:bg-gray-600 text-white font-bold py-4 px-8 rounded-xl transition inline-block">
+                    <i class="fas fa-history mr-2"></i>查看歷史記錄
+                </a>
+            </div>
+
+            <!-- 詳細分析 -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- 投籃分析 -->
+                <div class="card-hover bg-gray-700 rounded-xl p-6 shadow-xl">
+                    <h3 class="text-xl font-bold mb-4 flex items-center">
+                        <i class="fas fa-crosshairs text-orange-400 mr-2"></i>
+                        投籃分析
+                    </h3>
+                    <div class="space-y-3">
+                        <div class="flex justify-between items-center p-3 bg-gray-600 rounded-lg">
+                            <span>投籃命中率</span>
+                            <span class="font-bold text-green-400" id="fgPct2">0%</span>
+                        </div>
+                        <div class="flex justify-between items-center p-3 bg-gray-600 rounded-lg">
+                            <span>三分命中率</span>
+                            <span class="font-bold text-yellow-400" id="threePct2">0%</span>
+                        </div>
+                        <div class="flex justify-between items-center p-3 bg-gray-600 rounded-lg">
+                            <span>罰球命中率</span>
+                            <span class="font-bold text-blue-400" id="ftPct">0%</span>
+                        </div>
+                        <div class="flex justify-between items-center p-3 bg-gray-600 rounded-lg">
+                            <span>真實命中率 (TS%)</span>
+                            <span class="font-bold text-purple-400" id="trueShooting">0%</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 全能數據 -->
+                <div class="card-hover bg-gray-700 rounded-xl p-6 shadow-xl">
+                    <h3 class="text-xl font-bold mb-4 flex items-center">
+                        <i class="fas fa-chart-pie text-green-400 mr-2"></i>
+                        全能數據
+                    </h3>
+                    <div class="space-y-3">
+                        <div class="flex justify-between items-center p-3 bg-gray-600 rounded-lg">
+                            <span>籃板數</span>
+                            <span class="font-bold" id="reboundsDisplay">0</span>
+                        </div>
+                        <div class="flex justify-between items-center p-3 bg-gray-600 rounded-lg">
+                            <span>助攻數</span>
+                            <span class="font-bold" id="assistsDisplay">0</span>
+                        </div>
+                        <div class="flex justify-between items-center p-3 bg-gray-600 rounded-lg">
+                            <span>抄截數</span>
+                            <span class="font-bold" id="stealsDisplay">0</span>
+                        </div>
+                        <div class="flex justify-between items-center p-3 bg-gray-600 rounded-lg">
+                            <span>阻攻數</span>
+                            <span class="font-bold" id="blocksDisplay">0</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 效率指標 -->
+                <div class="card-hover bg-gray-700 rounded-xl p-6 shadow-xl">
+                    <h3 class="text-xl font-bold mb-4 flex items-center">
+                        <i class="fas fa-tachometer-alt text-purple-400 mr-2"></i>
+                        效率指標
+                    </h3>
+                    <div class="space-y-3">
+                        <div class="flex justify-between items-center p-3 bg-gray-600 rounded-lg">
+                            <span>助攻率</span>
+                            <span class="font-bold text-green-400" id="assistRatio">0%</span>
+                        </div>
+                        <div class="flex justify-between items-center p-3 bg-gray-600 rounded-lg">
+                            <span>失誤率</span>
+                            <span class="font-bold text-red-400" id="turnoverRatio">0%</span>
+                        </div>
+                        <div class="flex justify-between items-center p-3 bg-gray-600 rounded-lg">
+                            <span>場均得分</span>
+                            <span class="font-bold text-orange-400" id="pointsPerMin">0</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 建議區域 -->
+                <div class="card-hover bg-gray-700 rounded-xl p-6 shadow-xl">
+                    <h3 class="text-xl font-bold mb-4 flex items-center">
+                        <i class="fas fa-lightbulb text-yellow-400 mr-2"></i>
+                        改進建議
+                    </h3>
+                    <div id="recommendations" class="space-y-3">
+                        <!-- 建議內容將由 JavaScript 生成 -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <script>
+        let currentAnalysisData = null;
+
+        document.getElementById('basketballForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            analyzeBasketballData();
+        });
+
+        function analyzeBasketballData() {
+            // 收集表單數據
+            const data = {
+                playTime: parseInt(document.getElementById('playTime').value),
+                fgm: parseInt(document.getElementById('fgm').value),
+                fga: parseInt(document.getElementById('fga').value),
+                threePm: parseInt(document.getElementById('threePm').value),
+                threePa: parseInt(document.getElementById('threePa').value),
+                ftm: parseInt(document.getElementById('ftm').value),
+                fta: parseInt(document.getElementById('fta').value),
+                rebounds: parseInt(document.getElementById('rebounds').value),
+                assists: parseInt(document.getElementById('assists').value),
+                steals: parseInt(document.getElementById('steals').value),
+                blocks: parseInt(document.getElementById('blocks').value),
+                turnovers: parseInt(document.getElementById('turnovers').value)
+            };
+
+            // 計算總得分
+            const points = (data.fgm - data.threePm) * 2 + data.threePm * 3 + data.ftm;
+
+            // 計算命中率
+            const fgPct = data.fga > 0 ? (data.fgm / data.fga * 100) : 0;
+            const threePct = data.threePa > 0 ? (data.threePm / data.threePa * 100) : 0;
+            const ftPct = data.fta > 0 ? (data.ftm / data.fta * 100) : 0;
+
+            // 計算真實命中率 TS% = 得分 / [2 × (總出手數 + 0.44 × 罰球出手數)] × 100%
+            const totalShots = data.fga + 0.44 * data.fta;
+            const trueShooting = totalShots > 0 ? (points / (2 * totalShots) * 100) : 0;
+
+            // 計算效率值 EFF = PTS + REB + AST + STL + BLK - (FGA - FGM) - (FTA - FTM) - TO
+            const efficiency = points + data.rebounds + data.assists + data.steals + data.blocks
+                - (data.fga - data.fgm) - (data.fta - data.ftm) - data.turnovers;
+
+            // 計算助攻率和失誤率
+            const totalPossessions = data.fga + 0.44 * data.fta + data.turnovers;
+            const assistRatio = totalPossessions > 0 ? (data.assists / totalPossessions * 100) : 0;
+            const turnoverRatio = totalPossessions > 0 ? (data.turnovers / totalPossessions * 100) : 0;
+
+            // 場均得分
+            const pointsPerMin = data.playTime > 0 ? (points / data.playTime) : 0;
+
+            // 顯示結果
+            document.getElementById('totalPoints').textContent = points;
+            document.getElementById('fgPercentage').textContent = fgPct.toFixed(1) + '%';
+            document.getElementById('threePercentage').textContent = threePct.toFixed(1) + '%';
+
+            document.getElementById('fgPct2').textContent = fgPct.toFixed(1) + '%';
+            document.getElementById('threePct2').textContent = threePct.toFixed(1) + '%';
+            document.getElementById('ftPct').textContent = ftPct.toFixed(1) + '%';
+            document.getElementById('trueShooting').textContent = trueShooting.toFixed(1) + '%';
+
+            document.getElementById('reboundsDisplay').textContent = data.rebounds;
+            document.getElementById('assistsDisplay').textContent = data.assists;
+            document.getElementById('stealsDisplay').textContent = data.steals;
+            document.getElementById('blocksDisplay').textContent = data.blocks;
+
+            document.getElementById('assistRatio').textContent = assistRatio.toFixed(1) + '%';
+            document.getElementById('turnoverRatio').textContent = turnoverRatio.toFixed(1) + '%';
+            document.getElementById('pointsPerMin').textContent = pointsPerMin.toFixed(2) + ' 分/分鐘';
+
+            // 保存當前分析數據
+            currentAnalysisData = {
+                play_time: data.playTime,
+                fga: data.fga,
+                fgm: data.fgm,
+                fg_pct: fgPct,
+                three_pa: data.threePa,
+                three_pm: data.threePm,
+                three_pct: threePct,
+                fta: data.fta,
+                ftm: data.ftm,
+                ft_pct: ftPct,
+                rebounds: data.rebounds,
+                assists: data.assists,
+                steals: data.steals,
+                blocks: data.blocks,
+                turnovers: data.turnovers,
+                points: points,
+                true_shooting_pct: trueShooting,
+                assist_ratio: assistRatio,
+                turnover_ratio: turnoverRatio
+            };
+
+            // 生成建議
+            generateRecommendations(data, fgPct, threePct, ftPct, efficiency, turnoverRatio);
+
+            // 顯示結果和保存按鈕
+            document.getElementById('analysisResults').classList.add('show');
+            document.getElementById('saveSection').style.display = 'block';
+            document.getElementById('analysisResults').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
+        function generateRecommendations(data, fgPct, threePct, ftPct, efficiency, turnoverRatio) {
+            const recommendations = [];
+
+            // 基於投籃命中率的建議
+            if (fgPct < 40) {
+                recommendations.push({
+                    icon: 'fa-basketball-ball',
+                    color: 'text-orange-400',
+                    text: '投籃命中率偏低,建議多練習基本投籃動作,或選擇更好的出手時機。'
+                });
+            } else if (fgPct >= 50) {
+                recommendations.push({
+                    icon: 'fa-trophy',
+                    color: 'text-yellow-400',
+                    text: '優秀的投籃命中率!繼續保持出色的投籃手感和選擇。'
+                });
+            }
+
+            // 基於三分命中率的建議
+            if (data.threePa > 0) {
+                if (threePct < 30) {
+                    recommendations.push({
+                        icon: 'fa-dot-circle',
+                        color: 'text-yellow-400',
+                        text: '三分命中率需要提升,建議加強三分投籃訓練或減少三分出手。'
+                    });
+                } else if (threePct >= 40) {
+                    recommendations.push({
+                        icon: 'fa-fire',
+                        color: 'text-red-400',
+                        text: '三分球火熱!這是職業級別的三分命中率,繼續保持!'
+                    });
+                }
+            }
+
+            // 基於罰球命中率的建議
+            if (data.fta > 0 && ftPct < 70) {
+                recommendations.push({
+                    icon: 'fa-hand-point-up',
+                    color: 'text-blue-400',
+                    text: '罰球命中率有待提高,多練習罰球可以增加穩定的得分來源。'
+                });
+            }
+
+            // 基於失誤率的建議
+            if (turnoverRatio > 20) {
+                recommendations.push({
+                    icon: 'fa-exclamation-triangle',
+                    color: 'text-red-400',
+                    text: '失誤率偏高,注意保護球和傳球選擇,減少不必要的失誤。'
+                });
+            }
+
+            // 基於助攻的建議
+            if (data.assists >= 5) {
+                recommendations.push({
+                    icon: 'fa-hands-helping',
+                    color: 'text-green-400',
+                    text: '出色的組織能力!多次助攻顯示你能為隊友創造機會。'
+                });
+            }
+
+            // 基於防守的建議
+            const defensiveStats = data.steals + data.blocks;
+            if (defensiveStats >= 3) {
+                recommendations.push({
+                    icon: 'fa-shield-alt',
+                    color: 'text-blue-400',
+                    text: '防守積極!抄截和阻攻展現了你的防守意識。'
+                });
+            }
+
+            // 渲染建議
+            const recContainer = document.getElementById('recommendations');
+            recContainer.innerHTML = recommendations.map(rec => `
+                <div class="flex items-start space-x-3 p-3 bg-gray-600 rounded-lg">
+                    <i class="fas ${rec.icon} ${rec.color} mt-1"></i>
+                    <p class="text-sm">${rec.text}</p>
+                </div>
+            `).join('');
+        }
+
+        async function saveToHistory() {
+            {% if not session.username %}
+                alert('請先登入才能保存數據');
+                window.location.href = '/login';
+                return;
+            {% endif %}
+
+            if (!currentAnalysisData) {
+                alert('沒有可保存的數據');
+                return;
+            }
+
+            try {
+                const response = await fetch('/save_basketball', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(currentAnalysisData)
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    alert(result.message);
+                    window.location.href = '/basketball_history';
+                } else {
+                    alert('保存失敗: ' + result.message);
+                }
+            } catch (error) {
+                alert('保存時發生錯誤: ' + error);
+            }
+        }
+    </script>
+</body>
+</html>
