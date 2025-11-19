@@ -6,6 +6,9 @@ import csv
 import os
 import sqlite3
 import json
+import requests
+from bs4 import BeautifulSoup
+import re
 
 app = Flask(__name__)
 app.secret_key = 'your-secret-key-change-this-in-production'  # 請在生產環境中更改此密鑰
@@ -410,10 +413,387 @@ def player_detail(player_id):
                              years_data=years_data)
     return render_template('index.html'), 404
 
+def fetch_nba_games(date_str):
+    """抓取指定日期的 NBA 比賽資料"""
+    try:
+        url = f"https://www.nba.com/games?date={date_str}"
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+        }
+        response = requests.get(url, headers=headers, timeout=15)
+        response.raise_for_status()
+
+        # 從 HTML 中提取 __NEXT_DATA__ JSON
+        import json
+        match = re.search(r'<script id="__NEXT_DATA__" type="application/json">(.+?)</script>', response.text)
+        if not match:
+            print(f"找不到 __NEXT_DATA__ for {date_str}")
+            return []
+
+        # 解析 JSON
+        data = json.loads(match.group(1))
+
+        # 取得遊戲資料: props.pageProps.gameCardFeed.modules
+        game_feed = data.get('props', {}).get('pageProps', {}).get('gameCardFeed', {})
+        modules = game_feed.get('modules', [])
+
+        if not modules:
+            print(f"找不到 modules for {date_str}")
+            return []
+
+        games = []
+
+        # 第一個 module 包含 cards
+        for module in modules:
+            cards = module.get('cards', [])
+
+            for card in cards:
+                card_data = card.get('cardData', {})
+
+                # 確認有隊伍資料
+                if 'awayTeam' not in card_data or 'homeTeam' not in card_data:
+                    continue
+
+                game_id = card_data.get('gameId', '')
+                game_status = card_data.get('gameStatus', 1)  # 1=未開始, 2=進行中, 3=已結束
+                status_text = card_data.get('gameStatusText', '')
+
+                # 判斷比賽狀態
+                if game_status == 3:
+                    status = 'finished'
+                elif game_status == 2:
+                    status = 'live'
+                else:
+                    status = 'upcoming'
+
+                # 取得節數和時間
+                period = card_data.get('period', '')
+                game_clock = card_data.get('gameClock', '')
+
+                # 客隊資料
+                away_team = card_data['awayTeam']
+                away_code = away_team.get('teamTricode', '')
+                away_score = away_team.get('score', '')
+
+                # 主隊資料
+                home_team = card_data['homeTeam']
+                home_code = home_team.get('teamTricode', '')
+                home_score = home_team.get('score', '')
+
+                # 取得隊伍資訊 (中文名稱和 logo)
+                away_info = get_team_info(away_code)
+                home_info = get_team_info(home_code)
+
+                game = {
+                    'id': game_id,
+                    'awayTeam': away_info,
+                    'homeTeam': home_info,
+                    'status': status
+                }
+
+                # 根據狀態加入對應資訊
+                if status == 'finished':
+                    game['awayScore'] = away_score
+                    game['homeScore'] = home_score
+                    game['timeAgo'] = f"{random.randint(1, 8)} 小時前"
+                elif status == 'live':
+                    game['awayScore'] = away_score
+                    game['homeScore'] = home_score
+                    game['quarter'] = f"Q{period}" if period else 'Q4'
+                    game['time'] = game_clock if game_clock else '00:00'
+                else:  # upcoming
+                    game['startTime'] = status_text if status_text else '19:30'
+                    game['countdown'] = f"{random.randint(1, 12)} 小時後"
+
+                games.append(game)
+
+        print(f"成功抓取 {len(games)} 場比賽 for {date_str}")
+        return games
+
+    except Exception as e:
+        print(f"Error fetching NBA games for {date_str}: {e}")
+        import traceback
+        traceback.print_exc()
+        return []
+
+def fetch_box_score(game_id, away_code, home_code):
+    """抓取比賽 box-score 詳細資料
+
+    Args:
+        game_id: 比賽 ID
+        away_code: 客隊代碼
+        home_code: 主隊代碼
+
+    Returns:
+        dict: 包含球員統計和隊伍統計的資料
+    """
+    try:
+        url = f"https://www.nba.com/game/{away_code.lower()}-vs-{home_code.lower()}-{game_id}/box-score"
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+        }
+        response = requests.get(url, headers=headers, timeout=15)
+        response.raise_for_status()
+
+        # 從 HTML 中提取 __NEXT_DATA__ JSON
+        match = re.search(r'<script id="__NEXT_DATA__" type="application/json">(.+?)</script>', response.text)
+        if not match:
+            print(f"找不到 __NEXT_DATA__ for box-score {game_id}")
+            return None
+
+        # 解析 JSON
+        data = json.loads(match.group(1))
+
+        # 取得比賽資料
+        props = data.get('props', {}).get('pageProps', {})
+        game = props.get('game', {})
+
+        if not game:
+            print(f"找不到 game data for {game_id}")
+            return None
+
+        # 提取需要的資料
+        away_team = game.get('awayTeam', {})
+        home_team = game.get('homeTeam', {})
+
+        # 球員統計
+        away_players = away_team.get('players', [])
+        home_players = home_team.get('players', [])
+
+        # 隊伍統計
+        away_stats = away_team.get('statistics', {})
+        home_stats = home_team.get('statistics', {})
+
+        # 比分細節 (各節比分) - 從各隊的 periods 取得
+        away_periods = away_team.get('periods', [])
+        home_periods = home_team.get('periods', [])
+
+        # 合併各節比分
+        periods = []
+        for i in range(max(len(away_periods), len(home_periods))):
+            period_data = {
+                'period': i + 1,
+                'awayScore': away_periods[i].get('score', 0) if i < len(away_periods) else 0,
+                'homeScore': home_periods[i].get('score', 0) if i < len(home_periods) else 0
+            }
+            periods.append(period_data)
+
+        result = {
+            'gameId': game_id,
+            'awayTeam': {
+                'name': get_team_info(away_team.get('teamTricode', '')).get('name'),
+                'code': away_team.get('teamTricode', ''),
+                'score': away_team.get('score', 0),
+                'players': [{
+                    'name': f"{p.get('firstName', '')} {p.get('familyName', '')}".strip(),
+                    'nameI': p.get('nameI', ''),
+                    'position': p.get('position', ''),
+                    'jerseyNum': p.get('jerseyNum', ''),
+                    'statistics': p.get('statistics', {}),
+                    'hasPlayed': p.get('statistics', {}).get('minutes', '') != ''
+                } for p in away_players],
+                'statistics': away_stats
+            },
+            'homeTeam': {
+                'name': get_team_info(home_team.get('teamTricode', '')).get('name'),
+                'code': home_team.get('teamTricode', ''),
+                'score': home_team.get('score', 0),
+                'players': [{
+                    'name': f"{p.get('firstName', '')} {p.get('familyName', '')}".strip(),
+                    'nameI': p.get('nameI', ''),
+                    'position': p.get('position', ''),
+                    'jerseyNum': p.get('jerseyNum', ''),
+                    'statistics': p.get('statistics', {}),
+                    'hasPlayed': p.get('statistics', {}).get('minutes', '') != ''
+                } for p in home_players],
+                'statistics': home_stats
+            },
+            'periods': periods
+        }
+
+        return result
+
+    except Exception as e:
+        print(f"Error fetching box-score for {game_id}: {e}")
+        import traceback
+        traceback.print_exc()
+        return None
+
+def get_team_info(team_code):
+    """根據球隊代碼獲取球隊資訊"""
+    team_map = {
+        'LAL': {'name': '洛杉磯湖人', 'short': 'LAL', 'logo': 'https://cdn.nba.com/logos/nba/1610612747/primary/L/logo.svg'},
+        'GSW': {'name': '金州勇士', 'short': 'GSW', 'logo': 'https://cdn.nba.com/logos/nba/1610612744/primary/L/logo.svg'},
+        'BOS': {'name': '波士頓塞爾提克', 'short': 'BOS', 'logo': 'https://cdn.nba.com/logos/nba/1610612738/primary/L/logo.svg'},
+        'MIA': {'name': '邁阿密熱火', 'short': 'MIA', 'logo': 'https://cdn.nba.com/logos/nba/1610612748/primary/L/logo.svg'},
+        'PHX': {'name': '鳳凰城太陽', 'short': 'PHX', 'logo': 'https://cdn.nba.com/logos/nba/1610612756/primary/L/logo.svg'},
+        'POR': {'name': '波特蘭拓荒者', 'short': 'POR', 'logo': 'https://cdn.nba.com/logos/nba/1610612757/primary/L/logo.svg'},
+        'BKN': {'name': '布魯克林籃網', 'short': 'BKN', 'logo': 'https://cdn.nba.com/logos/nba/1610612751/primary/L/logo.svg'},
+        'DEN': {'name': '丹佛金塊', 'short': 'DEN', 'logo': 'https://cdn.nba.com/logos/nba/1610612743/primary/L/logo.svg'},
+        'ATL': {'name': '亞特蘭大老鷹', 'short': 'ATL', 'logo': 'https://cdn.nba.com/logos/nba/1610612737/primary/L/logo.svg'},
+        'DET': {'name': '底特律活塞', 'short': 'DET', 'logo': 'https://cdn.nba.com/logos/nba/1610612765/primary/L/logo.svg'},
+        'MEM': {'name': '曼菲斯灰熊', 'short': 'MEM', 'logo': 'https://cdn.nba.com/logos/nba/1610612763/primary/L/logo.svg'},
+        'SAS': {'name': '聖安東尼奧馬刺', 'short': 'SAS', 'logo': 'https://cdn.nba.com/logos/nba/1610612759/primary/L/logo.svg'},
+        'UTA': {'name': '猶他爵士', 'short': 'UTA', 'logo': 'https://cdn.nba.com/logos/nba/1610612762/primary/L/logo.svg'},
+        'ORL': {'name': '奧蘭多魔術', 'short': 'ORL', 'logo': 'https://cdn.nba.com/logos/nba/1610612753/primary/L/logo.svg'},
+        'CHI': {'name': '芝加哥公牛', 'short': 'CHI', 'logo': 'https://cdn.nba.com/logos/nba/1610612741/primary/L/logo.svg'},
+        'CLE': {'name': '克里夫蘭騎士', 'short': 'CLE', 'logo': 'https://cdn.nba.com/logos/nba/1610612739/primary/L/logo.svg'},
+        'DAL': {'name': '達拉斯獨行俠', 'short': 'DAL', 'logo': 'https://cdn.nba.com/logos/nba/1610612742/primary/L/logo.svg'},
+        'HOU': {'name': '休士頓火箭', 'short': 'HOU', 'logo': 'https://cdn.nba.com/logos/nba/1610612745/primary/L/logo.svg'},
+        'IND': {'name': '印第安納溜馬', 'short': 'IND', 'logo': 'https://cdn.nba.com/logos/nba/1610612754/primary/L/logo.svg'},
+        'LAC': {'name': '洛杉磯快艇', 'short': 'LAC', 'logo': 'https://cdn.nba.com/logos/nba/1610612746/primary/L/logo.svg'},
+        'MIL': {'name': '密爾瓦基公鹿', 'short': 'MIL', 'logo': 'https://cdn.nba.com/logos/nba/1610612749/primary/L/logo.svg'},
+        'MIN': {'name': '明尼蘇達灰狼', 'short': 'MIN', 'logo': 'https://cdn.nba.com/logos/nba/1610612750/primary/L/logo.svg'},
+        'NOP': {'name': '紐奧良鵜鶘', 'short': 'NOP', 'logo': 'https://cdn.nba.com/logos/nba/1610612740/primary/L/logo.svg'},
+        'NYK': {'name': '紐約尼克', 'short': 'NYK', 'logo': 'https://cdn.nba.com/logos/nba/1610612752/primary/L/logo.svg'},
+        'OKC': {'name': '奧克拉荷馬雷霆', 'short': 'OKC', 'logo': 'https://cdn.nba.com/logos/nba/1610612760/primary/L/logo.svg'},
+        'PHI': {'name': '費城76人', 'short': 'PHI', 'logo': 'https://cdn.nba.com/logos/nba/1610612755/primary/L/logo.svg'},
+        'SAC': {'name': '沙加緬度國王', 'short': 'SAC', 'logo': 'https://cdn.nba.com/logos/nba/1610612758/primary/L/logo.svg'},
+        'TOR': {'name': '多倫多暴龍', 'short': 'TOR', 'logo': 'https://cdn.nba.com/logos/nba/1610612761/primary/L/logo.svg'},
+        'WAS': {'name': '華盛頓巫師', 'short': 'WAS', 'logo': 'https://cdn.nba.com/logos/nba/1610612764/primary/L/logo.svg'},
+        'CHA': {'name': '夏洛特黃蜂', 'short': 'CHA', 'logo': 'https://cdn.nba.com/logos/nba/1610612766/primary/L/logo.svg'},
+    }
+
+    return team_map.get(team_code, {
+        'name': team_code,
+        'short': team_code,
+        'logo': 'https://via.placeholder.com/60'
+    })
+
 @app.route('/live_scores')
 def live_scores():
     """賽事比分頁面"""
     return render_template('live_scores.html')
+
+@app.route('/api/nba_games')
+def api_nba_games():
+    """API: 獲取指定日期範圍的 NBA 比賽資料"""
+    try:
+        # 獲取參數中的日期,預設為昨天
+        base_date_str = request.args.get('base_date')
+        if base_date_str:
+            base_date = datetime.strptime(base_date_str, '%Y-%m-%d')
+        else:
+            base_date = datetime.now() - timedelta(days=1)
+
+        # 生成前後兩天的日期 (總共5天)
+        dates = []
+        games_by_date = {}
+
+        for i in range(-2, 3):
+            date = base_date + timedelta(days=i)
+            date_str = date.strftime('%Y-%m-%d')
+            dates.append({
+                'date': date_str,
+                'display': date.strftime('%m/%d'),
+                'weekday': ['週一', '週二', '週三', '週四', '週五', '週六', '週日'][date.weekday()],
+                'is_base': i == 0
+            })
+
+            # 抓取該日期的比賽資料
+            games_by_date[date_str] = fetch_nba_games(date_str)
+
+        return jsonify({
+            'success': True,
+            'dates': dates,
+            'games': games_by_date
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/api/box_score')
+def api_box_score():
+    """API: 獲取比賽 box-score 詳細資料"""
+    try:
+        game_id = request.args.get('game_id')
+        away_code = request.args.get('away_code')
+        home_code = request.args.get('home_code')
+
+        if not game_id or not away_code or not home_code:
+            return jsonify({
+                'success': False,
+                'error': '缺少必要參數'
+            }), 400
+
+        box_score = fetch_box_score(game_id, away_code, home_code)
+
+        if box_score:
+            return jsonify({
+                'success': True,
+                'data': box_score
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': '無法獲取比賽資料'
+            }), 404
+
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+def generate_mock_games(dates):
+    """生成模擬比賽資料 (實際使用時應替換為真實 API)"""
+    teams = [
+        {'name': '洛杉磯湖人', 'short': 'LAL', 'logo': 'https://cdn.nba.com/logos/nba/1610612747/primary/L/logo.svg'},
+        {'name': '金州勇士', 'short': 'GSW', 'logo': 'https://cdn.nba.com/logos/nba/1610612744/primary/L/logo.svg'},
+        {'name': '波士頓塞爾提克', 'short': 'BOS', 'logo': 'https://cdn.nba.com/logos/nba/1610612738/primary/L/logo.svg'},
+        {'name': '邁阿密熱火', 'short': 'MIA', 'logo': 'https://cdn.nba.com/logos/nba/1610612748/primary/L/logo.svg'},
+        {'name': '鳳凰城太陽', 'short': 'PHX', 'logo': 'https://cdn.nba.com/logos/nba/1610612756/primary/L/logo.svg'},
+        {'name': '波特蘭拓荒者', 'short': 'POR', 'logo': 'https://cdn.nba.com/logos/nba/1610612757/primary/L/logo.svg'},
+        {'name': '布魯克林籃網', 'short': 'BKN', 'logo': 'https://cdn.nba.com/logos/nba/1610612751/primary/L/logo.svg'},
+        {'name': '丹佛金塊', 'short': 'DEN', 'logo': 'https://cdn.nba.com/logos/nba/1610612743/primary/L/logo.svg'},
+    ]
+
+    games = {}
+    statuses = ['live', 'finished', 'upcoming']
+
+    for date_info in dates:
+        date = date_info['date']
+        games[date] = []
+
+        # 每天生成 2-4 場比賽
+        num_games = random.randint(2, 4)
+        for i in range(num_games):
+            home_team = random.choice(teams)
+            away_team = random.choice([t for t in teams if t != home_team])
+
+            # 根據日期決定比賽狀態
+            if date_info['is_base']:
+                status = random.choice(['live', 'finished'])
+            elif dates.index(date_info) < 2:
+                status = 'finished'
+            else:
+                status = 'upcoming'
+
+            game = {
+                'id': f"{date}_{i}",
+                'status': status,
+                'homeTeam': home_team,
+                'awayTeam': away_team
+            }
+
+            if status == 'live':
+                game['quarter'] = random.choice(['Q1', 'Q2', 'Q3', 'Q4'])
+                game['time'] = f"{random.randint(0, 11):02d}:{random.randint(0, 59):02d}"
+                game['homeScore'] = random.randint(80, 120)
+                game['awayScore'] = random.randint(80, 120)
+            elif status == 'finished':
+                game['homeScore'] = random.randint(90, 130)
+                game['awayScore'] = random.randint(90, 130)
+                game['timeAgo'] = f"{random.randint(1, 5)} 小時前"
+            else:
+                game['startTime'] = f"{random.randint(18, 21)}:{random.choice(['00', '30'])}"
+                game['countdown'] = f"{random.randint(1, 8)} 小時後"
+
+            games[date].append(game)
+
+    return games
 
 @app.route('/statistics')
 def statistics():
