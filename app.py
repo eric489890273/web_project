@@ -93,8 +93,11 @@ def init_db():
     conn.commit()
     conn.close()
 
-# 初始化資料庫
-init_db()
+# 初始化資料庫 (加入錯誤處理)
+try:
+    init_db()
+except Exception as e:
+    print(f"資料庫初始化失敗: {e}")
 
 # 載入真實球員數據
 def load_players_data():
@@ -193,8 +196,13 @@ def load_multi_year_data(player_id):
 
     return years_data
 
-# 載入球員數據
-PLAYERS_DATA, TEAMS_LIST = load_players_data()
+# 載入球員數據 (加入錯誤處理)
+try:
+    PLAYERS_DATA, TEAMS_LIST = load_players_data()
+except Exception as e:
+    print(f"載入球員數據失敗: {e}")
+    PLAYERS_DATA = []
+    TEAMS_LIST = []
 
 # 模擬比賽數據
 GAMES_DATA = {
