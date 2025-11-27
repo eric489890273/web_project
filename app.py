@@ -14,8 +14,8 @@ import re
 app = Flask(__name__)
 app.secret_key = 'your-secret-key-change-this-in-production'  # 請在生產環境中更改此密鑰
 
-# PostgreSQL 資料庫連接字串
-DATABASE_URL = 'postgresql://neondb_owner:npg_JU0MEseP6fZC@ep-square-dust-a1cmt258-pooler.ap-southeast-1.aws.neon.tech/neondb?sslmode=require'
+# PostgreSQL 資料庫連接字串 (從環境變數讀取)
+DATABASE_URL = os.environ.get('DATABASE_URL', 'postgresql://neondb_owner:npg_JU0MEseP6fZC@ep-square-dust-a1cmt258-pooler.ap-southeast-1.aws.neon.tech/neondb?sslmode=require')
 
 def get_db_connection():
     """取得資料庫連接"""
@@ -1152,3 +1152,6 @@ if __name__ == '__main__':
     # 初始化資料庫
     init_db()
     app.run(debug=True, host='0.0.0.0', port=5000)
+
+# Vercel serverless function entry point
+app = app
