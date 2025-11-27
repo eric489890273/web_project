@@ -4,7 +4,8 @@ from werkzeug.security import generate_password_hash, check_password_hash
 import random
 import csv
 import os
-import sqlite3
+import psycopg2
+from psycopg2.extras import RealDictCursor
 import json
 import requests
 from bs4 import BeautifulSoup
@@ -13,19 +14,27 @@ import re
 app = Flask(__name__)
 app.secret_key = 'your-secret-key-change-this-in-production'  # 請在生產環境中更改此密鑰
 
+# PostgreSQL 資料庫連接字串
+DATABASE_URL = 'postgresql://neondb_owner:npg_JU0MEseP6fZC@ep-square-dust-a1cmt258-pooler.ap-southeast-1.aws.neon.tech/neondb?sslmode=require'
+
+def get_db_connection():
+    """取得資料庫連接"""
+    conn = psycopg2.connect(DATABASE_URL)
+    return conn
+
 # 資料庫初始化
 def init_db():
     """初始化資料庫"""
-    conn = sqlite3.connect('data/users.db')
+    conn = get_db_connection()
     c = conn.cursor()
 
     # 用戶表
     c.execute('''
         CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            username TEXT UNIQUE NOT NULL,
-            email TEXT UNIQUE NOT NULL,
-            password TEXT NOT NULL,
+            id SERIAL PRIMARY KEY,
+            username VARCHAR(255) UNIQUE NOT NULL,
+            email VARCHAR(255) UNIQUE NOT NULL,
+            password VARCHAR(255) NOT NULL,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
@@ -33,19 +42,19 @@ def init_db():
     # 運動數據歷史記錄表
     c.execute('''
         CREATE TABLE IF NOT EXISTS exercise_history (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id SERIAL PRIMARY KEY,
             user_id INTEGER NOT NULL,
-            exercise_type TEXT NOT NULL,
+            exercise_type VARCHAR(50) NOT NULL,
             duration INTEGER NOT NULL,
             weight REAL,
             height REAL,
             age INTEGER,
-            gender TEXT,
+            gender VARCHAR(10),
             heart_rate INTEGER,
             temperature REAL,
             calories REAL,
             met REAL,
-            heart_rate_zone TEXT,
+            heart_rate_zone VARCHAR(50),
             efficiency_score REAL,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (user_id) REFERENCES users (id)
@@ -55,7 +64,7 @@ def init_db():
     # 籃球數據歷史記錄表
     c.execute('''
         CREATE TABLE IF NOT EXISTS basketball_history (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id SERIAL PRIMARY KEY,
             user_id INTEGER NOT NULL,
             play_time INTEGER NOT NULL,
             fga INTEGER,
@@ -306,9 +315,9 @@ def login():
         username = request.form.get('username')
         password = request.form.get('password')
 
-        conn = sqlite3.connect('data/users.db')
+        conn = get_db_connection()
         c = conn.cursor()
-        c.execute('SELECT * FROM users WHERE username = ?', (username,))
+        c.execute('SELECT * FROM users WHERE username = %s', (username,))
         user = c.fetchone()
         conn.close()
 
@@ -341,9 +350,9 @@ def register():
             return render_template('register.html')
 
         # 檢查用戶是否已存在
-        conn = sqlite3.connect('data/users.db')
+        conn = get_db_connection()
         c = conn.cursor()
-        c.execute('SELECT * FROM users WHERE username = ? OR email = ?', (username, email))
+        c.execute('SELECT * FROM users WHERE username = %s OR email = %s', (username, email))
         existing_user = c.fetchone()
 
         if existing_user:
@@ -353,7 +362,7 @@ def register():
 
         # 創建新用戶
         hashed_password = generate_password_hash(password)
-        c.execute('INSERT INTO users (username, email, password) VALUES (?, ?, ?)',
+        c.execute('INSERT INTO users (username, email, password) VALUES (%s, %s, %s)',
                  (username, email, hashed_password))
         conn.commit()
         conn.close()
@@ -814,13 +823,13 @@ def save_exercise():
     data = request.get_json()
 
     try:
-        conn = sqlite3.connect('data/users.db')
+        conn = get_db_connection()
         c = conn.cursor()
         c.execute('''
             INSERT INTO exercise_history
             (user_id, exercise_type, duration, weight, height, age, gender,
              heart_rate, temperature, calories, met, heart_rate_zone, efficiency_score)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         ''', (
             session['user_id'],
             data.get('exercise_type'),
@@ -852,14 +861,14 @@ def save_basketball():
     data = request.get_json()
 
     try:
-        conn = sqlite3.connect('data/users.db')
+        conn = get_db_connection()
         c = conn.cursor()
         c.execute('''
             INSERT INTO basketball_history
             (user_id, play_time, fga, fgm, fg_pct, three_pa, three_pm, three_pct,
              fta, ftm, ft_pct, rebounds, assists, steals, blocks, turnovers, points,
              true_shooting_pct, assist_ratio, turnover_ratio)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         ''', (
             session['user_id'],
             data.get('play_time'),
@@ -896,12 +905,11 @@ def history():
         flash('請先登入', 'error')
         return redirect(url_for('login'))
 
-    conn = sqlite3.connect('data/users.db')
-    conn.row_factory = sqlite3.Row
-    c = conn.cursor()
+    conn = get_db_connection()
+    c = conn.cursor(cursor_factory=RealDictCursor)
     c.execute('''
         SELECT * FROM exercise_history
-        WHERE user_id = ?
+        WHERE user_id = %s
         ORDER BY created_at DESC
     ''', (session['user_id'],))
     records = c.fetchall()
@@ -936,12 +944,11 @@ def basketball_history():
         flash('請先登入', 'error')
         return redirect(url_for('login'))
 
-    conn = sqlite3.connect('data/users.db')
-    conn.row_factory = sqlite3.Row
-    c = conn.cursor()
+    conn = get_db_connection()
+    c = conn.cursor(cursor_factory=RealDictCursor)
     c.execute('''
         SELECT * FROM basketball_history
-        WHERE user_id = ?
+        WHERE user_id = %s
         ORDER BY created_at DESC
     ''', (session['user_id'],))
     records = c.fetchall()
@@ -997,9 +1004,9 @@ def delete_history(record_id):
         return jsonify({'success': False, 'message': '請先登入'}), 401
 
     try:
-        conn = sqlite3.connect('data/users.db')
+        conn = get_db_connection()
         c = conn.cursor()
-        c.execute('DELETE FROM exercise_history WHERE id = ? AND user_id = ?',
+        c.execute('DELETE FROM exercise_history WHERE id = %s AND user_id = %s',
                  (record_id, session['user_id']))
         conn.commit()
         conn.close()
@@ -1015,9 +1022,9 @@ def delete_basketball_history(record_id):
         return jsonify({'success': False, 'message': '請先登入'}), 401
 
     try:
-        conn = sqlite3.connect('data/users.db')
+        conn = get_db_connection()
         c = conn.cursor()
-        c.execute('DELETE FROM basketball_history WHERE id = ? AND user_id = ?',
+        c.execute('DELETE FROM basketball_history WHERE id = %s AND user_id = %s',
                  (record_id, session['user_id']))
         conn.commit()
         conn.close()
